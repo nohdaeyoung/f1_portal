@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 /**
@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  revalidateTag("ai-digest", "max"); // unstable_cache 캐시 무효화 → 다음 요청 시 Claude API 재호출
   revalidatePath("/news");
   revalidatePath("/");
 
