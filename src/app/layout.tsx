@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/teams", label: "팀" },
   { href: "/circuits", label: "서킷" },
   { href: "/info", label: "정보" },
+  { href: "/devlog", label: "개발노트" },
 ];
 
 export default function RootLayout({
@@ -51,14 +52,90 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
 
         {/* Footer */}
-        <footer className="border-t border-[#2D2D3A] py-8 mt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-[#64748B]">
-            <p>
-              Pit<span className="text-[#E8002D]">Lane</span> &mdash; F1 종합 포털
-            </p>
-            <p className="mt-1 text-xs">
-              Data from Jolpica F1 API & OpenF1. Not affiliated with Formula 1.
-            </p>
+        <footer className="border-t border-[#2D2D3A] mt-16">
+          {/* Main footer */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+
+              {/* Brand */}
+              <div>
+                <Link
+                  href="/"
+                  className="text-xl font-black text-white hover:text-[#E8002D] transition-colors"
+                >
+                  Pit<span className="text-[#E8002D]">Lane</span>
+                </Link>
+                <p className="mt-2 text-xs text-[#64748B] leading-relaxed">
+                  2026 F1 종합 포털 — 규정, 드라이버, 팀,<br />
+                  서킷, 시즌 정보를 한 곳에서.
+                </p>
+              </div>
+
+              {/* Navigation */}
+              <div>
+                <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest mb-3">
+                  페이지
+                </p>
+                <div className="grid grid-cols-2 gap-1">
+                  {[
+                    { href: "/news", label: "뉴스" },
+                    { href: "/season", label: "시즌" },
+                    { href: "/drivers", label: "드라이버" },
+                    { href: "/teams", label: "팀" },
+                    { href: "/circuits", label: "서킷" },
+                    { href: "/info", label: "정보 허브" },
+                  ].map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="text-sm text-[#64748B] hover:text-white transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dev */}
+              <div>
+                <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest mb-3">
+                  개발
+                </p>
+                <div className="space-y-2">
+                  <Link
+                    href="/devlog"
+                    className="flex items-center gap-2 text-sm text-[#64748B] hover:text-white transition-colors group"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] group-hover:animate-pulse" />
+                    개발 노트
+                    <span className="text-[10px] text-[#22C55E] bg-[#22C55E]/10 px-1.5 py-0.5 rounded font-bold">
+                      매일 7시 갱신
+                    </span>
+                  </Link>
+                  <a
+                    href="https://github.com/nohdaeyoung/f1_portal"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-[#64748B] hover:text-white transition-colors"
+                  >
+                    <span className="text-xs">↗</span>
+                    GitHub
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="border-t border-[#2D2D3A]">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+              <p className="text-xs text-[#64748B]">
+                © {new Date().getFullYear()} PitLane. All rights reserved.
+              </p>
+              <p className="text-xs text-[#64748B]">
+                Data: Jolpica F1 API · OpenF1 · GitHub &mdash; Not affiliated with Formula 1® or FIA.
+              </p>
+            </div>
           </div>
         </footer>
       </body>
