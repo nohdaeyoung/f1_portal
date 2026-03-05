@@ -11,6 +11,9 @@ import {
   getConstructorStandings as jolpikaConstructorStandings,
   getAllResults,
   getRaceSchedule,
+  getRaceResults,
+  getQualifying,
+  getSprintResults,
   getCircuitHistory,
   getConstructorHistory,
   getDriverHistory,
@@ -19,6 +22,7 @@ import {
   type JolpicaStanding,
   type JolpicaConstructorStanding,
   type JolpicaRace,
+  type JolpicaResult,
 } from "@/lib/api/jolpica";
 
 import { getLatestDrivers } from "@/lib/api/openf1";
@@ -471,6 +475,107 @@ export async function fetchDriverCareerStats(localDriverId: string): Promise<Dri
   } catch (e) {
     console.warn(`[live] driver career stats failed (${localDriverId})`, e);
     return [];
+  }
+}
+
+// ─── GP 레이스 결과 ───────────────────────────────────────────
+
+export interface RaceResult {
+  position: number;
+  positionText: string;
+  number: string;
+  driverId: string;
+  driverName: string;
+  constructorId: string;
+  constructorName: string;
+  grid: number;
+  laps: number;
+  status: string;
+  time?: string;
+  points: number;
+  fastestLap?: string;
+  fastestLapRank?: number;
+}
+
+export interface QualifyingResult {
+  position: number;
+  number: string;
+  driverId: string;
+  driverName: string;
+  constructorId: string;
+  constructorName: string;
+  q1?: string;
+  q2?: string;
+  q3?: string;
+}
+
+function mapResult(r: JolpicaResult): RaceResult {
+  const pos = parseInt(r.position);
+  return {
+    position: isNaN(pos) ? 99 : pos,
+    positionText: r.positionText,
+    number: r.number,
+    driverId: JOLPICA_TO_LOCAL_DRIVER[r.Driver.driverId] ?? r.Driver.driverId,
+    driverName: `${r.Driver.givenName} ${r.Driver.familyName}`,
+    constructorId: JOLPICA_TO_LOCAL_TEAM[r.Constructor.constructorId] ?? r.Constructor.constructorId,
+    constructorName: r.Constructor.name,
+    grid: parseInt(r.grid),
+    laps: parseInt(r.laps),
+    status: r.status,
+    time: r.Time?.time,
+    points: parseFloat(r.points),
+    fastestLap: r.FastestLap?.Time.time,
+    fastestLapRank: r.FastestLap ? parseInt(r.FastestLap.rank) : undefined,
+  };
+}
+
+export async function fetchRaceResult(round: number | string): Promise<{
+  results: RaceResult[];
+  raceName: string;
+  date: string;
+} | null> {
+  try {
+    const race = await getRaceResults(round);
+    if (!race?.Results?.length) return null;
+    return {
+      raceName: race.raceName,
+      date: race.date,
+      results: race.Results.map(mapResult),
+    };
+  } catch (e) {
+    console.warn(`[live] fetchRaceResult(${round}) failed`, e);
+    return null;
+  }
+}
+
+export async function fetchQualifyingResult(round: number | string): Promise<QualifyingResult[]> {
+  try {
+    const results = await getQualifying(round);
+    return results.map((r) => ({
+      position: parseInt(r.position),
+      number: r.number,
+      driverId: JOLPICA_TO_LOCAL_DRIVER[r.Driver.driverId] ?? r.Driver.driverId,
+      driverName: `${r.Driver.givenName} ${r.Driver.familyName}`,
+      constructorId: JOLPICA_TO_LOCAL_TEAM[r.Constructor.constructorId] ?? r.Constructor.constructorId,
+      constructorName: r.Constructor.name,
+      q1: r.Q1,
+      q2: r.Q2,
+      q3: r.Q3,
+    }));
+  } catch (e) {
+    console.warn(`[live] fetchQualifyingResult(${round}) failed`, e);
+    return [];
+  }
+}
+
+export async function fetchSprintResult(round: number | string): Promise<RaceResult[] | null> {
+  try {
+    const race = await getSprintResults(round);
+    if (!race?.Results?.length) return null;
+    return race.Results.map(mapResult);
+  } catch (e) {
+    console.warn(`[live] fetchSprintResult(${round}) failed`, e);
+    return null;
   }
 }
 

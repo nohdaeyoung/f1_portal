@@ -576,7 +576,7 @@ function SeasonCalendar({ calendar }: { calendar: RaceCalendar[] }) {
           return (
             <Link
               key={race.round}
-              href="/season"
+              href={`/season/race/${race.round}`}
               className={`rounded-xl px-3 py-3 border transition-all hover:-translate-y-0.5 ${
                 isNext
                   ? "bg-[#E8002D]/10 border-[#E8002D]/30"

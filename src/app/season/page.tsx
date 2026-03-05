@@ -290,7 +290,7 @@ function RaceCalendarSection({ races }: { races: RaceCalendar[] }) {
               </div>
               <div className="flex-1 min-w-0">
                 <Link
-                  href={`/circuits/${race.circuitId}`}
+                  href={`/season/race/${race.round}`}
                   className="hover:text-[#E8002D] transition-colors"
                 >
                   <span className="text-sm font-bold text-white block">
