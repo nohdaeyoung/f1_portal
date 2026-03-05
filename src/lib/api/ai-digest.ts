@@ -209,43 +209,54 @@ const DEMO_DIGEST: AiDigest = {
 
 // ─── Public API ───────────────────────────────────────────────
 
+/** KST 기준 오늘 날짜 YYYY-MM-DD */
+function todayKST(): string {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+}
+
 /**
  * 어제(또는 최근 24h) 기사를 AI로 분석해 한국어 심층 다이제스트를 반환.
  * ANTHROPIC_API_KEY 미설정 시 데모 다이제스트 반환.
- * unstable_cache로 24h 캐시 — 'ai-digest' 태그로 cron 재검증.
+ * 캐시 키에 KST 날짜 포함 → 매일 자동으로 새 캐시, revalidateTag로 즉시 갱신 가능.
  */
-export const getAiDigest = unstable_cache(
-  async (): Promise<AiDigest | null> => {
-    // 1. RSS에서 기사 수집
-    const digest = await getDailyDigest();
-    const all = digest.recent;
+async function generateDigest(): Promise<AiDigest | null> {
+  // 1. RSS에서 기사 수집
+  const digest = await getDailyDigest();
+  const all = digest.recent;
 
-    // 2. 어제 기사 우선, 없으면 최근 24h
-    let articles = all.filter((a) => isYesterday(a.publishedAt));
-    if (articles.length < 5) {
-      articles = all.filter((a) => isWithin(a.publishedAt, 24));
-    }
-    if (articles.length === 0) {
-      articles = all.slice(0, 20);
-    }
+  // 2. 어제 기사 우선, 없으면 최근 24h
+  let articles = all.filter((a) => isYesterday(a.publishedAt));
+  if (articles.length < 5) {
+    articles = all.filter((a) => isWithin(a.publishedAt, 24));
+  }
+  if (articles.length === 0) {
+    articles = all.slice(0, 20);
+  }
 
-    // 3. Claude 호출 — API 키 없으면 데모 다이제스트로 폴백
-    const articleList = buildArticleList(articles);
-    const result = await callClaude(articleList);
-    if (!result) return DEMO_DIGEST;
+  // 3. Claude 호출 — API 키 없으면 데모 다이제스트로 폴백
+  const articleList = buildArticleList(articles);
+  const result = await callClaude(articleList);
+  if (!result) return DEMO_DIGEST;
 
-    return {
-      generatedAt: new Date().toISOString(),
-      dateLabel: yesterdayLabel(),
-      headline: result.headline,
-      summary: result.summary,
-      bullets: result.bullets,
-      editorNote: result.editorNote,
-      watchPoints: result.watchPoints,
-      hotTopics: result.hotTopics,
-      articleCount: articles.length,
-    };
-  },
-  ["ai-digest"],
-  { revalidate: 86400, tags: ["ai-digest"] }
-);
+  return {
+    generatedAt: new Date().toISOString(),
+    dateLabel: yesterdayLabel(),
+    headline: result.headline,
+    summary: result.summary,
+    bullets: result.bullets,
+    editorNote: result.editorNote,
+    watchPoints: result.watchPoints,
+    hotTopics: result.hotTopics,
+    articleCount: articles.length,
+  };
+}
+
+export async function getAiDigest(): Promise<AiDigest | null> {
+  // 날짜별 캐시: 매일 새 키 → 자동 갱신, revalidateTag('ai-digest', 'max')로 즉시 갱신 가능
+  const date = todayKST();
+  const cached = unstable_cache(generateDigest, [`ai-digest-${date}`], {
+    revalidate: 86400,
+    tags: ["ai-digest"],
+  });
+  return cached();
+}
