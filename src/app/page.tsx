@@ -16,7 +16,8 @@ import {
 import { getAiDigest, type AiDigest } from "@/lib/api/ai-digest";
 import { getF1News, type NewsArticle } from "@/lib/api/news";
 
-export const revalidate = 300; // 5분
+// AI 다이제스트는 unstable_cache가 캐싱 담당, 페이지 자체는 동적 렌더링
+export const dynamic = "force-dynamic";
 
 // ─── Constants ────────────────────────────────────────────────
 

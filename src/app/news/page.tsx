@@ -6,7 +6,8 @@ export const metadata = {
   description: "6개 매체의 당일 F1 기사를 토픽별로 정리한 일일 보고서",
 };
 
-export const revalidate = 86400; // 24h — 매일 오전 7시 KST 크론이 /api/revalidate-digest 호출로 강제 갱신
+// force-dynamic: 빌드 시 Claude API 호출 실패 방지 → 서버 렌더링 + unstable_cache가 데이터 캐싱 담당
+export const dynamic = "force-dynamic";
 
 // ─── Source badge colors ──────────────────────────────────────
 
