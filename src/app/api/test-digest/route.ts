@@ -1,5 +1,5 @@
 /**
- * 임시 테스트 엔드포인트 — Claude API 직접 호출 확인용
+ * 임시 테스트 엔드포인트 — 캐시 없이 AI 다이제스트 전체 생성 확인용
  * 배포 확인 후 삭제 예정
  */
 import Anthropic from "@anthropic-ai/sdk";
@@ -10,31 +10,35 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-
   if (!apiKey) {
     return NextResponse.json({ error: "ANTHROPIC_API_KEY 없음" }, { status: 500 });
   }
 
-  // RSS 기사 수집
-  let articleCount = 0;
   try {
     const digest = await getDailyDigest();
-    articleCount = digest.recent.length;
-  } catch (e) {
-    return NextResponse.json({ error: "RSS 수집 실패", detail: String(e) }, { status: 500 });
-  }
+    const articles = digest.recent.slice(0, 10);
+    const articleList = articles
+      .map((a, i) => `[${i + 1}] ${a.sourceName}: ${a.title}`)
+      .join("\n");
 
-  // Claude API 간단 테스트
-  try {
     const client = new Anthropic({ apiKey });
     const msg = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 50,
-      messages: [{ role: "user", content: "F1 한 문장으로 설명해줘" }],
+      model: "claude-sonnet-4-6",
+      max_tokens: 200,
+      messages: [{
+        role: "user",
+        content: `다음 F1 기사 목록을 보고 오늘의 핵심 헤드라인을 한국어로 한 문장만 작성해줘:\n\n${articleList}`,
+      }],
     });
-    const text = msg.content[0].type === "text" ? msg.content[0].text : "";
-    return NextResponse.json({ ok: true, articleCount, claudeTest: text.slice(0, 100) });
+
+    const headline = msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
+    return NextResponse.json({
+      ok: true,
+      articleCount: digest.recent.length,
+      headline,
+      apiKeyLength: apiKey.length,
+    });
   } catch (e) {
-    return NextResponse.json({ error: "Claude API 호출 실패", detail: String(e) }, { status: 500 });
+    return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
