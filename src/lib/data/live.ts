@@ -6,6 +6,8 @@
  * API 실패 시 목업 데이터로 자동 폴백.
  */
 
+import { unstable_cache } from "next/cache";
+
 import {
   getDriverStandings as jolpikaDriverStandings,
   getConstructorStandings as jolpikaConstructorStandings,
@@ -171,7 +173,7 @@ const JOLPICA_TO_LOCAL_TEAM: Record<string, string> = {
 
 // ─── 드라이버 챔피언십 순위 ───────────────────────────────────
 
-export async function fetchDriverStandings(): Promise<Standing[]> {
+async function _fetchDriverStandings(): Promise<Standing[]> {
   try {
     const data = await jolpikaDriverStandings();
     if (!data.length) return mockDriverStandings;
@@ -180,7 +182,7 @@ export async function fetchDriverStandings(): Promise<Standing[]> {
       position: parseInt(s.position),
       driverId:
         JOLPICA_TO_LOCAL_DRIVER[s.Driver.driverId] ??
-        s.Driver.driverId, // 매핑 없으면 Jolpica 값 그대로
+        s.Driver.driverId,
       points: parseFloat(s.points),
       wins: parseInt(s.wins),
     }));
@@ -190,11 +192,15 @@ export async function fetchDriverStandings(): Promise<Standing[]> {
   }
 }
 
+export const fetchDriverStandings = unstable_cache(
+  _fetchDriverStandings,
+  ["driver-standings"],
+  { revalidate: 300, tags: ["standings", "driver-standings"] }
+);
+
 // ─── 컨스트럭터 챔피언십 순위 ────────────────────────────────
 
-export async function fetchConstructorStandings(): Promise<
-  ConstructorStanding[]
-> {
+async function _fetchConstructorStandings(): Promise<ConstructorStanding[]> {
   try {
     const data = await jolpikaConstructorStandings();
     if (!data.length) return mockConstructorStandings;
@@ -212,6 +218,12 @@ export async function fetchConstructorStandings(): Promise<
     return mockConstructorStandings;
   }
 }
+
+export const fetchConstructorStandings = unstable_cache(
+  _fetchConstructorStandings,
+  ["constructor-standings"],
+  { revalidate: 300, tags: ["standings", "constructor-standings"] }
+);
 
 // ─── 서킷 역대 우승자 ─────────────────────────────────────────
 
@@ -277,7 +289,7 @@ export async function fetchTeamHistory(localTeamId: string): Promise<TeamSeasonS
 
 // ─── 레이스 캘린더 ────────────────────────────────────────────
 
-export async function fetchCalendar(): Promise<RaceCalendar[]> {
+async function _fetchCalendar(): Promise<RaceCalendar[]> {
   try {
     // 일정 + 결과를 병렬 호출
     const [schedule, results] = await Promise.all([
@@ -366,6 +378,12 @@ export async function fetchCalendar(): Promise<RaceCalendar[]> {
     }));
   }
 }
+
+export const fetchCalendar = unstable_cache(
+  _fetchCalendar,
+  ["calendar"],
+  { revalidate: 300, tags: ["calendar"] }
+);
 
 // ─── 특정 라운드 세션 일정 ────────────────────────────────────
 

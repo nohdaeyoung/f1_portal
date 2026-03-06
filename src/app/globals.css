@@ -1,35 +1,80 @@
 @import "tailwindcss";
 
+@theme inline {
+  /* ── Brand ── */
+  --color-f1-red:     #E8002D;
+  --color-f1-red-dim: #CC0025;
+
+  /* ── Background Scale ── */
+  --color-bg-base:    #0A0A0F;
+  --color-bg-raised:  #111118;
+  --color-bg-surface: #141420;
+  --color-bg-overlay: #1A1A2A;
+
+  /* ── Border Scale ── */
+  --color-border-subtle:  #1E1E2A;
+  --color-border-default: #2D2D3A;
+  --color-border-strong:  #3D3D50;
+
+  /* ── Text Scale ── */
+  --color-text-primary:   #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-muted:     #64748B;
+  --color-text-disabled:  #475569;
+
+  /* ── Semantic ── */
+  --color-status-live:    #E8002D;
+  --color-status-active:  #22C55E;
+  --color-status-warning: #F59E0B;
+  --color-status-info:    #3B82F6;
+  --color-status-purple:  #A855F7;
+
+  /* ── Podium ── */
+  --color-gold:   #FCD34D;
+  --color-silver: #C0C0C0;
+  --color-bronze: #CD7F32;
+
+  /* ── Tire Compounds ── */
+  --color-tire-soft:         #E8002D;
+  --color-tire-medium:       #FCD34D;
+  --color-tire-hard:         #E5E7EB;
+  --color-tire-intermediate: #22C55E;
+  --color-tire-wet:          #3B82F6;
+
+  /* ── Typography ── */
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+
+  /* ── Legacy aliases (하위호환) ── */
+  --color-background: #0A0A0F;
+  --color-foreground: #F1F5F9;
+  --color-surface:    #141420;
+  --color-border:     #2D2D3A;
+  --color-muted:      #64748B;
+}
+
 :root {
   --background: #0A0A0F;
   --foreground: #F1F5F9;
-  --surface: #141420;
-  --border: #2D2D3A;
-  --muted: #64748B;
-  --f1-red: #E8002D;
-  --gold: #FCD34D;
-  --silver: #C0C0C0;
-  --bronze: #CD7F32;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-border: var(--border);
-  --color-muted: var(--muted);
-  --color-f1-red: var(--f1-red);
+  --surface:    #141420;
+  --border:     #2D2D3A;
+  --muted:      #64748B;
+  --f1-red:     #E8002D;
+  --gold:       #FCD34D;
+  --silver:     #C0C0C0;
+  --bronze:     #CD7F32;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: var(--background);
@@ -46,4 +91,10 @@ body {
 ::selection {
   background: rgba(232, 0, 45, 0.3);
   color: #fff;
+}
+
+/* Focus visible */
+:focus-visible {
+  outline: 2px solid var(--f1-red);
+  outline-offset: 2px;
 }

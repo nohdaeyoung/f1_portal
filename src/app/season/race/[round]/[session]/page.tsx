@@ -33,11 +33,11 @@ interface OF1Grid     { driver_number: number; position: number; lap_duration: n
 
 const OF1 = "https://api.openf1.org/v1";
 
-async function of1get<T>(path: string, params: Record<string, string | number> = {}): Promise<T[]> {
+async function of1get<T>(path: string, params: Record<string, string | number> = {}, revalidate = 60): Promise<T[]> {
   const url = new URL(`${OF1}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
   try {
-    const r = await fetch(url.toString(), { next: { revalidate: 60 } });
+    const r = await fetch(url.toString(), { next: { revalidate } });
     if (!r.ok) return [];
     const data = await r.json();
     return Array.isArray(data) ? data : [];
@@ -139,6 +139,11 @@ export default async function SessionPage({
   const sessionStart = new Date(sessionDateIso).getTime();
   const now = Date.now();
   const isUpcoming = now < sessionStart;
+  // 세션 종료 기준: 레이스 +3h, 그 외 +2h
+  const sessionEndMs = sessionStart + (session === "race" || session === "sprint" ? 3 : 2) * 3_600_000;
+  const isCompleted = now > sessionEndMs;
+  // 완료된 세션은 데이터 불변 → 24h 캐시; 진행 중은 60s
+  const ttl = isCompleted ? 86400 : 60;
 
   // OpenF1 session_key 조회 (세션이 지난 경우에만)
   const sessionInfo = isUpcoming ? null : await findSessionKey(session, sessionDateIso);
@@ -151,14 +156,14 @@ export default async function SessionPage({
 
   const [results, drivers, laps, stints, pits, raceControl, weatherArr, grid] = sk
     ? await Promise.all([
-        of1get<OF1Result>  ("/session_result", { session_key: sk }),
-        of1get<OF1Driver>  ("/drivers",        { session_key: sk }),
-        of1get<OF1Lap>     ("/laps",           { session_key: sk }),
-        of1get<OF1Stint>   ("/stints",         { session_key: sk }),
-        of1get<OF1Pit>     ("/pit",            { session_key: sk }),
-        of1get<OF1RC>      ("/race_control",   { session_key: sk }),
-        of1get<OF1Weather> ("/weather",        { session_key: sk }),
-        of1get<OF1Grid>    ("/starting_grid",  { session_key: sk }),
+        of1get<OF1Result>  ("/session_result", { session_key: sk }, ttl),
+        of1get<OF1Driver>  ("/drivers",        { session_key: sk }, ttl),
+        of1get<OF1Lap>     ("/laps",           { session_key: sk }, ttl),
+        of1get<OF1Stint>   ("/stints",         { session_key: sk }, ttl),
+        of1get<OF1Pit>     ("/pit",            { session_key: sk }, ttl),
+        of1get<OF1RC>      ("/race_control",   { session_key: sk }, ttl),
+        of1get<OF1Weather> ("/weather",        { session_key: sk }, ttl),
+        of1get<OF1Grid>    ("/starting_grid",  { session_key: sk }, ttl),
       ])
     : [[], [], [], [], [], [], [], []];
 
@@ -331,22 +336,22 @@ export default async function SessionPage({
               <h2 className="text-xl font-bold text-white mb-4">최종 순위 — 베스트 랩 기준</h2>
               <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
+                  <table className="w-full text-sm border-collapse">
+                    <thead className="sticky top-0 z-10 bg-[#141420]">
                       <tr className="border-b border-[#2D2D3A]">
-                        <th className="text-left px-3 py-3 text-xs text-[#64748B] uppercase w-10">#</th>
-                        <th className="text-left px-3 py-3 text-xs text-[#64748B] uppercase">드라이버</th>
-                        <th className="text-left px-3 py-3 text-xs text-[#64748B] uppercase hidden sm:table-cell">팀</th>
-                        <th className="text-center px-3 py-3 text-xs text-[#64748B] uppercase hidden md:table-cell">타이어</th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden sm:table-cell">랩수</th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono">베스트 랩</th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden md:table-cell">갭</th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S1</th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S2</th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S3</th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden xl:table-cell">IS1 <span className="normal-case text-[10px]">km/h</span></th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden xl:table-cell">IS2 <span className="normal-case text-[10px]">km/h</span></th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden xl:table-cell">탑스피드 <span className="normal-case text-[10px]">km/h</span></th>
+                        <th className="sticky left-0 z-20 bg-[#141420] text-left px-3 py-2.5 text-xs text-[#64748B] uppercase w-12">#</th>
+                        <th className="sticky left-12 z-20 bg-[#141420] text-left px-3 py-2.5 text-xs text-[#64748B] uppercase min-w-[140px]">드라이버</th>
+                        <th className="text-left px-3 py-2.5 text-xs text-[#64748B] uppercase hidden sm:table-cell">팀</th>
+                        <th className="text-center px-3 py-2.5 text-xs text-[#64748B] uppercase hidden md:table-cell">타이어</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-[#64748B] uppercase hidden sm:table-cell">랩수</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-[#64748B] uppercase font-mono">베스트 랩</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-[#64748B] uppercase font-mono hidden md:table-cell">갭</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S1</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S2</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S3</th>
+                        <th className="text-right px-3 py-2.5 text-xs text-[#64748B] uppercase hidden xl:table-cell">IS1 <span className="normal-case text-[10px]">km/h</span></th>
+                        <th className="text-right px-3 py-2.5 text-xs text-[#64748B] uppercase hidden xl:table-cell">IS2 <span className="normal-case text-[10px]">km/h</span></th>
+                        <th className="text-right px-3 py-2.5 text-xs text-[#64748B] uppercase hidden xl:table-cell">탑스피드 <span className="normal-case text-[10px]">km/h</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -364,16 +369,16 @@ export default async function SessionPage({
                         return (
                           <tr
                             key={r.driver_number}
-                            className="border-b border-[#2D2D3A]/50 hover:bg-white/[0.02] transition-colors last:border-0"
+                            className={`border-b border-[#1E1E2A] hover:bg-white/[0.04] transition-colors last:border-0 ${isFastest ? "bg-[#A855F7]/[0.04]" : ""}`}
                           >
                             {/* 순위 */}
-                            <td className="px-3 py-3">
+                            <td className="sticky left-0 z-10 bg-[#141420] px-3 py-2.5">
                               <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center text-xs font-black ${posColor(r.position)}`}>
                                 {r.position}
                               </span>
                             </td>
                             {/* 드라이버 */}
-                            <td className="px-3 py-3">
+                            <td className="sticky left-12 z-10 bg-[#141420] px-3 py-2.5">
                               <div className="flex items-center gap-2">
                                 {d?.headshot_url ? (
                                   // eslint-disable-next-line @next/next/no-img-element
@@ -391,21 +396,21 @@ export default async function SessionPage({
                                   <div className="flex items-center gap-1.5">
                                     <span className="font-bold text-white text-sm leading-none">{d?.name_acronym ?? `#${r.driver_number}`}</span>
                                     {isFastest && (
-                                      <span className="text-[9px] font-black text-[#A855F7] bg-[#A855F7]/15 border border-[#A855F7]/30 px-1 py-0.5 rounded leading-none">FL</span>
+                                      <span className="text-[10px] font-black text-[#A855F7] bg-[#A855F7]/15 border border-[#A855F7]/30 px-1 py-0.5 rounded leading-none">FL</span>
                                     )}
                                   </div>
-                                  <div className="text-[11px] text-[#64748B] mt-0.5 leading-none hidden sm:block">
+                                  <div className="text-xs text-[#64748B] mt-0.5 leading-none hidden sm:block">
                                     {d?.full_name}
                                   </div>
                                 </div>
                               </div>
                             </td>
                             {/* 팀 */}
-                            <td className="px-3 py-3 hidden sm:table-cell">
+                            <td className="px-3 py-2.5 hidden sm:table-cell">
                               <span className="text-xs" style={{ color: teamColor }}>{d?.team_name ?? "—"}</span>
                             </td>
                             {/* 타이어 */}
-                            <td className="px-3 py-3 text-center hidden md:table-cell">
+                            <td className="px-3 py-2.5 text-center hidden md:table-cell">
                               {compound ? (
                                 <span
                                   className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black border-2"
@@ -417,43 +422,43 @@ export default async function SessionPage({
                               ) : <span className="text-[#475569]">—</span>}
                             </td>
                             {/* 랩수 */}
-                            <td className="px-3 py-3 text-right text-[#64748B] text-xs hidden sm:table-cell">
+                            <td className="px-3 py-2.5 text-right text-[#64748B] text-xs hidden sm:table-cell">
                               {r.number_of_laps}L
                             </td>
                             {/* 베스트 랩 */}
-                            <td className="px-3 py-3 text-right font-mono text-xs">
+                            <td className="px-3 py-2.5 text-right font-mono text-xs">
                               <span className={isFastest ? "text-[#A855F7] font-bold" : "text-white"}>
                                 {fmtLap(fastLap?.lap_duration ?? null)}
                               </span>
                             </td>
                             {/* 갭 */}
-                            <td className="px-3 py-3 text-right font-mono text-xs text-[#64748B] hidden md:table-cell">
+                            <td className="px-3 py-2.5 text-right font-mono text-xs text-[#64748B] hidden md:table-cell">
                               {gap === 0 ? <span className="text-[#E8002D] font-bold">리더</span>
                                 : gap != null ? `+${gap.toFixed(3)}`
                                 : "—"}
                             </td>
                             {/* S1 */}
-                            <td className="px-3 py-3 text-right font-mono text-[11px] text-[#64748B] hidden lg:table-cell">
+                            <td className="px-3 py-2.5 text-right font-mono text-xs text-[#64748B] hidden lg:table-cell">
                               {fastLap?.duration_sector_1?.toFixed(3) ?? "—"}
                             </td>
                             {/* S2 */}
-                            <td className="px-3 py-3 text-right font-mono text-[11px] text-[#64748B] hidden lg:table-cell">
+                            <td className="px-3 py-2.5 text-right font-mono text-xs text-[#64748B] hidden lg:table-cell">
                               {fastLap?.duration_sector_2?.toFixed(3) ?? "—"}
                             </td>
                             {/* S3 */}
-                            <td className="px-3 py-3 text-right font-mono text-[11px] text-[#64748B] hidden lg:table-cell">
+                            <td className="px-3 py-2.5 text-right font-mono text-xs text-[#64748B] hidden lg:table-cell">
                               {fastLap?.duration_sector_3?.toFixed(3) ?? "—"}
                             </td>
                             {/* IS1 중간점1 속도 */}
-                            <td className="px-3 py-3 text-right text-[11px] text-[#64748B] hidden xl:table-cell">
+                            <td className="px-3 py-2.5 text-right text-xs text-[#64748B] hidden xl:table-cell">
                               {fastLap?.i1_speed != null ? `${fastLap.i1_speed}` : "—"}
                             </td>
                             {/* IS2 중간점2 속도 */}
-                            <td className="px-3 py-3 text-right text-[11px] text-[#64748B] hidden xl:table-cell">
+                            <td className="px-3 py-2.5 text-right text-xs text-[#64748B] hidden xl:table-cell">
                               {fastLap?.i2_speed != null ? `${fastLap.i2_speed}` : "—"}
                             </td>
                             {/* 탑스피드 */}
-                            <td className="px-3 py-3 text-right text-[11px] text-[#64748B] hidden xl:table-cell">
+                            <td className="px-3 py-2.5 text-right text-xs text-[#64748B] hidden xl:table-cell">
                               {fastLap?.st_speed != null ? `${fastLap.st_speed}` : "—"}
                             </td>
                           </tr>
@@ -474,20 +479,20 @@ export default async function SessionPage({
               </h2>
               <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
+                  <table className="w-full text-sm border-collapse">
+                    <thead className="sticky top-0 z-10 bg-[#141420]">
                       <tr className="border-b border-[#2D2D3A]">
-                        <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase w-10">#</th>
-                        <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase">드라이버</th>
-                        <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase hidden sm:table-cell">팀</th>
+                        <th className="sticky left-0 z-20 bg-[#141420] text-left px-4 py-2.5 text-xs text-[#64748B] uppercase w-12">#</th>
+                        <th className="sticky left-12 z-20 bg-[#141420] text-left px-4 py-2.5 text-xs text-[#64748B] uppercase min-w-[160px]">드라이버</th>
+                        <th className="text-left px-4 py-2.5 text-xs text-[#64748B] uppercase hidden sm:table-cell">팀</th>
                         {(isRaceType || isQualType) && (
-                          <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase hidden md:table-cell">그리드</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-[#64748B] uppercase hidden md:table-cell">그리드</th>
                         )}
-                        <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase font-mono">
+                        <th className="text-right px-4 py-2.5 text-xs text-[#64748B] uppercase font-mono">
                           {isQualType ? "베스트 랩" : "갭"}
                         </th>
                         {isRaceType && (
-                          <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase hidden md:table-cell">랩수</th>
+                          <th className="text-right px-4 py-2.5 text-xs text-[#64748B] uppercase hidden md:table-cell">랩수</th>
                         )}
                       </tr>
                     </thead>
@@ -505,14 +510,14 @@ export default async function SessionPage({
                         return (
                           <tr
                             key={r.driver_number}
-                            className="border-b border-[#2D2D3A]/50 hover:bg-white/[0.02] transition-colors last:border-0"
+                            className={`border-b border-[#1E1E2A] hover:bg-white/[0.04] transition-colors last:border-0 ${isFastest ? "bg-[#A855F7]/[0.04]" : ""}`}
                           >
-                            <td className="px-4 py-3">
+                            <td className="sticky left-0 z-10 bg-[#141420] px-4 py-2.5">
                               <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center text-xs font-black ${posColor(r.position)}`}>
                                 {isDNF ? (r.dsq ? "DSQ" : r.dns ? "DNS" : "DNF") : r.position}
                               </span>
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="sticky left-12 z-10 bg-[#141420] px-4 py-2.5">
                               <div className="flex items-center gap-2">
                                 <span className="w-1 h-6 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
                                 <span className="font-bold text-white">{d?.name_acronym ?? `#${r.driver_number}`}</span>
@@ -522,22 +527,22 @@ export default async function SessionPage({
                                 )}
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-[#64748B] text-xs hidden sm:table-cell">
+                            <td className="px-4 py-2.5 text-[#64748B] text-xs hidden sm:table-cell">
                               {d?.team_name ?? "—"}
                             </td>
                             {(isRaceType || isQualType) && (
-                              <td className="px-4 py-3 text-right text-[#64748B] font-mono text-xs hidden md:table-cell">
+                              <td className="px-4 py-2.5 text-right text-[#64748B] font-mono text-xs hidden md:table-cell">
                                 {gridPos?.position ?? "—"}
                               </td>
                             )}
-                            <td className="px-4 py-3 text-right font-mono text-xs">
+                            <td className="px-4 py-2.5 text-right font-mono text-xs">
                               {isQualType
                                 ? <span className="text-white">{fmtLap(fastLap?.lap_duration ?? null)}</span>
                                 : <span className="text-[#94A3B8]">{isDNF ? <span className="text-[#EF4444]">—</span> : fmtGap(r.gap_to_leader)}</span>
                               }
                             </td>
                             {isRaceType && (
-                              <td className="px-4 py-3 text-right text-[#64748B] text-xs hidden md:table-cell">
+                              <td className="px-4 py-2.5 text-right text-[#64748B] text-xs hidden md:table-cell">
                                 {r.number_of_laps}
                               </td>
                             )}
@@ -708,16 +713,21 @@ export default async function SessionPage({
                     RED: "#E8002D", BLUE: "#3B82F6", CHEQUERED: "#FFFFFF",
                   };
                   const dotColor = msg.flag ? (flagColors[msg.flag] ?? "#64748B") : "#64748B";
+                  // 카테고리별 배경 강조
+                  const rowBg = msg.flag === "RED" ? "bg-[#E8002D]/[0.04]"
+                    : msg.flag === "YELLOW" || msg.flag === "DOUBLE_YELLOW" ? "bg-[#FCD34D]/[0.03]"
+                    : msg.flag === "CHEQUERED" ? "bg-white/[0.03]"
+                    : "";
                   return (
-                    <div key={i} className="flex items-start gap-3 px-4 py-3 border-b border-[#2D2D3A]/40 last:border-0 hover:bg-white/[0.02]">
-                      <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: dotColor }} />
+                    <div key={i} className={`flex items-start gap-3 px-4 py-3 border-b border-[#1E1E2A] last:border-0 hover:bg-white/[0.04] transition-colors ${rowBg}`}>
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0 mt-1" style={{ backgroundColor: dotColor }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-[#94a3b8] leading-snug">{msg.message}</p>
+                        <p className="text-sm text-[#94A3B8] leading-snug">{msg.message}</p>
                         {msg.lap_number && (
-                          <span className="text-[10px] text-[#64748B]">Lap {msg.lap_number}</span>
+                          <span className="text-xs text-[#64748B] mt-0.5 block">Lap {msg.lap_number}</span>
                         )}
                       </div>
-                      <span className="text-[10px] text-[#64748B] font-mono shrink-0">
+                      <span className="text-xs text-[#64748B] font-mono shrink-0">
                         {fmtTime(msg.date)}
                       </span>
                     </div>
@@ -728,7 +738,7 @@ export default async function SessionPage({
           )}
 
           {/* ── 세션 키 footnote ── */}
-          <p className="text-[10px] text-[#2D2D3A] text-center">
+          <p className="text-xs text-[#475569] text-center">
             OpenF1 session_key: {sk} · 데이터 출처: openf1.org
           </p>
         </div>

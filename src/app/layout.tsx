@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import Link from "next/link";
+import { NavLinks } from "@/components/layout/NavLinks";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 const SITE_URL = "https://f1.324.ing";
 
@@ -35,44 +43,24 @@ export const metadata: Metadata = {
   },
 };
 
-const navLinks = [
-  { href: "/news", label: "뉴스" },
-  { href: "/season", label: "시즌" },
-  { href: "/drivers", label: "드라이버" },
-  { href: "/teams", label: "팀" },
-  { href: "/circuits", label: "서킷" },
-  { href: "/history", label: "역사" },
-  { href: "/info", label: "규정" },
-];
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={inter.variable}>
       <body className="antialiased min-h-screen flex flex-col">
         {/* GNB */}
-        <header className="sticky top-0 z-50 bg-[#0A0A0F]/90 backdrop-blur-md border-b border-[#2D2D3A]">
+        <header className="sticky top-0 z-50 bg-bg-base/90 backdrop-blur-md border-b border-border-default">
           <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Link
               href="/"
-              className="text-xl font-black tracking-tight text-white hover:text-[#E8002D] transition-colors"
+              className="text-xl font-black tracking-tight text-white hover:text-f1-red transition-colors"
             >
-              Pit<span className="text-[#E8002D]">Lane</span>
+              Pit<span className="text-f1-red">Lane</span>
             </Link>
-            <div className="flex items-center gap-1 sm:gap-2">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="px-3 py-2 text-sm font-medium text-[#64748B] hover:text-white transition-colors rounded-lg hover:bg-white/5"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
+            <NavLinks />
           </nav>
         </header>
 
@@ -80,7 +68,7 @@ export default function RootLayout({
         <main className="flex-1">{children}</main>
 
         {/* Footer */}
-        <footer className="border-t border-[#2D2D3A] mt-16">
+        <footer className="border-t border-border-default mt-16">
           {/* Main footer */}
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
@@ -89,11 +77,11 @@ export default function RootLayout({
               <div>
                 <Link
                   href="/"
-                  className="text-xl font-black text-white hover:text-[#E8002D] transition-colors"
+                  className="text-xl font-black text-white hover:text-f1-red transition-colors"
                 >
-                  Pit<span className="text-[#E8002D]">Lane</span>
+                  Pit<span className="text-f1-red">Lane</span>
                 </Link>
-                <p className="mt-2 text-xs text-[#64748B] leading-relaxed">
+                <p className="mt-2 text-xs text-text-muted leading-relaxed">
                   2026 F1 종합 포털 — 규정, 드라이버, 팀,<br />
                   서킷, 시즌 정보를 한 곳에서.
                 </p>
@@ -101,7 +89,7 @@ export default function RootLayout({
 
               {/* Navigation */}
               <div>
-                <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest mb-3">
+                <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-3">
                   페이지
                 </p>
                 <div className="grid grid-cols-2 gap-1">
@@ -117,7 +105,7 @@ export default function RootLayout({
                     <Link
                       key={link.href}
                       href={link.href}
-                      className="text-sm text-[#64748B] hover:text-white transition-colors"
+                      className="text-sm text-text-muted hover:text-white transition-colors"
                     >
                       {link.label}
                     </Link>
@@ -127,17 +115,17 @@ export default function RootLayout({
 
               {/* Dev */}
               <div>
-                <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest mb-3">
+                <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-3">
                   개발
                 </p>
                 <div className="space-y-2">
                   <Link
                     href="/devlog"
-                    className="flex items-center gap-2 text-sm text-[#64748B] hover:text-white transition-colors group"
+                    className="flex items-center gap-2 text-sm text-text-muted hover:text-white transition-colors group"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] group-hover:animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-status-active group-hover:animate-pulse" />
                     개발 노트
-                    <span className="text-[10px] text-[#22C55E] bg-[#22C55E]/10 px-1.5 py-0.5 rounded font-bold">
+                    <span className="text-xs text-status-active bg-status-active/10 px-1.5 py-0.5 rounded font-bold">
                       매일 7시 갱신
                     </span>
                   </Link>
@@ -147,12 +135,12 @@ export default function RootLayout({
           </div>
 
           {/* Bottom bar */}
-          <div className="border-t border-[#2D2D3A]">
+          <div className="border-t border-border-default">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-              <p className="text-xs text-[#64748B]">
+              <p className="text-xs text-text-muted">
                 © {new Date().getFullYear()} PitLane. All rights reserved.
               </p>
-              <p className="text-xs text-[#64748B]">
+              <p className="text-xs text-text-muted">
                 Data: Jolpica F1 API · OpenF1 · GitHub &mdash; Not affiliated with Formula 1® or FIA.
               </p>
             </div>
