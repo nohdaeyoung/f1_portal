@@ -20,6 +20,7 @@ interface LiveData {
   raceControl: Of1RCMsg[];
   weather: { air: number; track: number; rainfall: number; wind: number } | null;
   locations:  Map<number, { x: number; y: number }>;
+  restricted: boolean; // true when OpenF1 blocks access during live session
 }
 
 // ─── Session metadata ─────────────────────────────────────────
@@ -31,13 +32,13 @@ const SESSION_META: {
   sprintOnly?: true;
   regularOnly?: true;
 }[] = [
-  { key: "fp1",        ko: "FP1",          durationMin: 65 },
-  { key: "fp2",        ko: "FP2",          durationMin: 65, regularOnly: true },
-  { key: "fp3",        ko: "FP3",          durationMin: 65, regularOnly: true },
-  { key: "sq",         ko: "스프린트 퀄리", durationMin: 60, sprintOnly: true  },
-  { key: "sprint",     ko: "스프린트",      durationMin: 40, sprintOnly: true  },
-  { key: "qualifying", ko: "퀄리파잉",      durationMin: 65 },
-  { key: "race",       ko: "레이스",        durationMin: 130 },
+  { key: "fp1",        ko: "FP1",          durationMin: 100 }, // 65 + 35 buffer
+  { key: "fp2",        ko: "FP2",          durationMin: 100, regularOnly: true },
+  { key: "fp3",        ko: "FP3",          durationMin: 100, regularOnly: true },
+  { key: "sq",         ko: "스프린트 퀄리", durationMin: 95,  sprintOnly: true  },
+  { key: "sprint",     ko: "스프린트",      durationMin: 75,  sprintOnly: true  },
+  { key: "qualifying", ko: "퀄리파잉",      durationMin: 100 }, // 레드플래그 대기 포함
+  { key: "race",       ko: "레이스",        durationMin: 180 }, // 130 + 50 buffer
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -82,19 +83,24 @@ function fmtCountdown(ms: number) {
 
 const OF1 = "https://api.openf1.org/v1";
 
-async function of1<T>(path: string, params: Record<string, string | number> = {}): Promise<T[]> {
+/** Returns null when API is restricted (live session paywall), [] on other errors */
+async function of1<T>(path: string, params: Record<string, string | number> = {}): Promise<T[] | null> {
   const url = new URL(`${OF1}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
   try {
     const r = await fetch(url.toString(), { cache: "no-store" });
+    if (r.status === 403) return null; // paywall during live session
     if (!r.ok) return [];
-    return r.json();
+    const data = await r.json();
+    // OpenF1 returns {detail: "..."} object when restricted
+    if (!Array.isArray(data)) return null;
+    return data;
   } catch { return []; }
 }
 
 async function resolveSessionKey(year = 2026): Promise<number | null> {
   const sessions = await of1<Of1Session>("/sessions", { year });
-  if (!sessions.length) return null;
+  if (!sessions || !sessions.length) return null;
   const now = Date.now();
   // Prefer currently active session (with +90min buffer for post-session data)
   const active = sessions.find(s =>
@@ -119,20 +125,23 @@ async function fetchLiveData(sk: number): Promise<LiveData> {
     of1<Of1Location>("/location",     { session_key: sk, "date>": cutoff }),
   ]);
 
+  // null means API is restricted (paywall during live session)
+  const restricted = [rawPos, rawInt, rawDrv, rawRC, rawWx, rawLoc].every(r => r === null);
+
   // Latest position per driver
   const posMap = new Map<number, number>();
-  for (const p of rawPos) posMap.set(p.driver_number, p.position);
+  for (const p of rawPos ?? []) posMap.set(p.driver_number, p.position);
   const positions = Array.from(posMap.entries())
     .map(([driverNumber, position]) => ({ driverNumber, position }))
     .sort((a, b) => a.position - b.position);
 
   // Latest interval per driver
   const intervals = new Map<number, number | null>();
-  for (const i of rawInt) intervals.set(i.driver_number, i.gap_to_leader);
+  for (const i of rawInt ?? []) intervals.set(i.driver_number, i.gap_to_leader);
 
   // Driver info
   const driverInfo = new Map<number, { acronym: string; name: string; teamColor: string }>();
-  for (const d of rawDrv) {
+  for (const d of rawDrv ?? []) {
     const tc = d.team_colour ?? "888888";
     driverInfo.set(d.driver_number, {
       acronym: d.name_acronym,
@@ -142,19 +151,20 @@ async function fetchLiveData(sk: number): Promise<LiveData> {
   }
 
   // Race control — last 5, newest first
-  const raceControl = rawRC.slice(-5).reverse();
+  const raceControl = (rawRC ?? []).slice(-5).reverse();
 
   // Weather — latest entry
-  const wx = rawWx[rawWx.length - 1] ?? null;
+  const wxList = rawWx ?? [];
+  const wx = wxList[wxList.length - 1] ?? null;
   const weather = wx
     ? { air: wx.air_temperature, track: wx.track_temperature, rainfall: wx.rainfall, wind: wx.wind_speed }
     : null;
 
   // Latest location per driver
   const locations = new Map<number, { x: number; y: number }>();
-  for (const l of rawLoc) locations.set(l.driver_number, { x: l.x, y: l.y });
+  for (const l of rawLoc ?? []) locations.set(l.driver_number, { x: l.x, y: l.y });
 
-  return { positions, intervals, driverInfo, raceControl, weather, locations };
+  return { positions, intervals, driverInfo, raceControl, weather, locations, restricted };
 }
 
 // ─── Live mini-map ────────────────────────────────────────────
@@ -494,6 +504,14 @@ export function RaceWeekendLive({ sessions, round, raceName, circuitCity }: Prop
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/* OpenF1 paywall notice */}
+          {liveData?.restricted && (
+            <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl px-5 py-4 text-sm text-[#64748B]">
+              <span className="text-[#E8002D] font-bold mr-2">⚠</span>
+              OpenF1 실시간 데이터는 라이브 세션 중 유료 사용자만 접근 가능합니다. 세션 종료 후 데이터가 표시됩니다.
             </div>
           )}
 
