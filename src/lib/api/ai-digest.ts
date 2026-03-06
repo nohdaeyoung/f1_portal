@@ -129,8 +129,14 @@ async function callClaude(articleList: string): Promise<Omit<AiDigest, "generate
     });
 
     const raw = message.content[0].type === "text" ? message.content[0].text : "";
-    const cleaned = raw.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
-    return JSON.parse(cleaned);
+    // 마크다운 코드 블록 제거 후 첫 번째 JSON 객체 추출 (더 robust한 파싱)
+    const stripped = raw.replace(/^```json\s*/im, "").replace(/\s*```\s*$/m, "").trim();
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error("[ai-digest] JSON 추출 실패. raw:", raw.slice(0, 200));
+      return null;
+    }
+    return JSON.parse(jsonMatch[0]);
   } catch (e) {
     console.error("[ai-digest] Claude API 오류:", e);
     return null;
