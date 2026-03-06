@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { calendar as mockCalendar } from "@/data/f1-data";
 import { fetchCalendar } from "@/lib/data/live";
 
-export const revalidate = 300;
+export const revalidate = 60;
 
 // ─── Session config ────────────────────────────────────────────
 
@@ -20,9 +20,9 @@ const SESSION_CONFIG: Record<string, { name: string; of1Names: string[] }> = {
 // ─── OpenF1 types ─────────────────────────────────────────────
 
 interface OF1Session  { session_key: number; meeting_key: number; session_name: string; date_start: string; date_end: string; }
-interface OF1Driver   { driver_number: number; full_name: string; name_acronym: string; team_colour: string | null; team_name: string; }
+interface OF1Driver   { driver_number: number; full_name: string; name_acronym: string; team_colour: string | null; team_name: string; headshot_url: string | null; country_code: string | null; first_name: string; last_name: string; }
 interface OF1Result   { driver_number: number; position: number; gap_to_leader: number | null; duration: number | null; number_of_laps: number; dnf: boolean; dns: boolean; dsq: boolean; }
-interface OF1Lap      { driver_number: number; lap_number: number; lap_duration: number | null; duration_sector_1: number | null; duration_sector_2: number | null; duration_sector_3: number | null; is_pit_out_lap: boolean; }
+interface OF1Lap      { driver_number: number; lap_number: number; lap_duration: number | null; duration_sector_1: number | null; duration_sector_2: number | null; duration_sector_3: number | null; is_pit_out_lap: boolean; i1_speed: number | null; i2_speed: number | null; st_speed: number | null; }
 interface OF1Stint    { driver_number: number; compound: string; stint_number: number; tyre_age_at_start: number; lap_start: number; lap_end: number | null; }
 interface OF1Pit      { driver_number: number; lap_number: number; pit_duration: number | null; }
 interface OF1RC       { date: string; flag: string | null; message: string; category: string; lap_number: number | null; }
@@ -136,13 +136,12 @@ export default async function SessionPage({
   // 세션 일정 없음 (스프린트 주말인데 fp2 등)
   if (!sessionDateIso) notFound();
 
-  // 세션이 아직 진행 전이면 404
   const sessionStart = new Date(sessionDateIso).getTime();
   const now = Date.now();
-  if (now < sessionStart) notFound();
+  const isUpcoming = now < sessionStart;
 
-  // OpenF1 session_key 조회
-  const sessionInfo = await findSessionKey(session, sessionDateIso);
+  // OpenF1 session_key 조회 (세션이 지난 경우에만)
+  const sessionInfo = isUpcoming ? null : await findSessionKey(session, sessionDateIso);
 
   // session_key 없으면 빈 데이터로 렌더링
   const sk = sessionInfo?.sessionKey;
@@ -209,6 +208,19 @@ export default async function SessionPage({
   const sortedResults = [...results].sort((a, b) => a.position - b.position);
 
   const hasData = results.length > 0;
+
+  // 드라이버별 베스트 랩에 사용된 타이어 컴파운드 조회
+  const bestLapCompound = new Map<number, string>();
+  for (const [dn, lap] of fastestLapMap) {
+    const lapNum = lap.lap_number;
+    const driverStints = stints
+      .filter((s) => s.driver_number === dn)
+      .sort((a, b) => a.stint_number - b.stint_number);
+    const stint = driverStints.find(
+      (s) => s.lap_start <= lapNum && (s.lap_end == null || s.lap_end >= lapNum),
+    );
+    if (stint) bestLapCompound.set(dn, stint.compound);
+  }
 
   // Positive func: color for pos
   const posColor = (pos: number) =>
@@ -280,7 +292,21 @@ export default async function SessionPage({
         </div>
       </section>
 
-      {!hasData && !sk && (
+      {isUpcoming && (
+        <div className="text-center py-16 bg-[#141420] border border-[#2D2D3A] rounded-2xl">
+          <p className="text-5xl mb-4">🕐</p>
+          <p className="text-white font-bold text-lg mb-2">세션 예정</p>
+          <p className="text-[#64748B] text-sm">
+            {new Date(sessionDateIso).toLocaleDateString("ko-KR", {
+              timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "short",
+            })}{" "}
+            {fmtTime(sessionDateIso)} KST에 시작합니다
+          </p>
+          <p className="text-[#3D3D50] text-xs mt-3">세션 종료 후 결과가 자동으로 표시됩니다</p>
+        </div>
+      )}
+
+      {!isUpcoming && !hasData && !sk && (
         <div className="text-center py-16 bg-[#141420] border border-[#2D2D3A] rounded-2xl">
           <p className="text-5xl mb-4">📡</p>
           <p className="text-white font-bold text-lg mb-2">데이터 수집 중</p>
@@ -299,96 +325,290 @@ export default async function SessionPage({
       {hasData && (
         <div className="space-y-10">
 
-          {/* ── 결과 순위 ── */}
-          <section>
-            <h2 className="text-xl font-bold text-white mb-4">
-              {isFpType ? "최종 순위 (베스트 랩 기준)" : isQualType ? "그리드 순위" : "레이스 결과"}
-            </h2>
-            <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[#2D2D3A]">
-                      <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase w-10">#</th>
-                      <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase">드라이버</th>
-                      <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase hidden sm:table-cell">팀</th>
-                      {(isRaceType || isQualType) && (
-                        <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase hidden md:table-cell">그리드</th>
-                      )}
-                      <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase font-mono">
-                        {isFpType ? "베스트 랩" : isQualType ? "베스트 랩" : "갭"}
-                      </th>
-                      {isRaceType && (
-                        <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase hidden md:table-cell">랩수</th>
-                      )}
-                      {isFpType && (
-                        <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase hidden lg:table-cell font-mono">S1</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedResults.map((r) => {
-                      const d = driverMap.get(r.driver_number);
-                      const teamColor = d?.team_colour
-                        ? (d.team_colour.startsWith("#") ? d.team_colour : `#${d.team_colour}`)
-                        : "#64748B";
-                      const fastLap = fastestLapMap.get(r.driver_number);
-                      const gridPos = gridMap.get(r.driver_number);
-                      const isDNF = r.dnf || r.dsq || r.dns;
-                      const isFastest = overallFastest?.driverNumber === r.driver_number;
+          {/* ── FP 결과 테이블 ── */}
+          {isFpType && (
+            <section>
+              <h2 className="text-xl font-bold text-white mb-4">최종 순위 — 베스트 랩 기준</h2>
+              <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#2D2D3A]">
+                        <th className="text-left px-3 py-3 text-xs text-[#64748B] uppercase w-10">#</th>
+                        <th className="text-left px-3 py-3 text-xs text-[#64748B] uppercase">드라이버</th>
+                        <th className="text-left px-3 py-3 text-xs text-[#64748B] uppercase hidden sm:table-cell">팀</th>
+                        <th className="text-center px-3 py-3 text-xs text-[#64748B] uppercase hidden md:table-cell">타이어</th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden sm:table-cell">랩수</th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono">베스트 랩</th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden md:table-cell">갭</th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S1</th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S2</th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S3</th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden xl:table-cell">탑스피드</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedResults.map((r) => {
+                        const d = driverMap.get(r.driver_number);
+                        const teamColor = d?.team_colour
+                          ? (d.team_colour.startsWith("#") ? d.team_colour : `#${d.team_colour}`)
+                          : "#64748B";
+                        const fastLap = fastestLapMap.get(r.driver_number);
+                        const isFastest = overallFastest?.driverNumber === r.driver_number;
+                        const compound = bestLapCompound.get(r.driver_number);
+                        const compoundColor = COMPOUND_COLOR[compound ?? ""] ?? "#64748B";
+                        const gap = r.gap_to_leader;
 
-                      return (
-                        <tr
-                          key={r.driver_number}
-                          className="border-b border-[#2D2D3A]/50 hover:bg-white/[0.02] transition-colors last:border-0"
-                        >
-                          <td className="px-4 py-3">
-                            <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center text-xs font-black ${posColor(r.position)}`}>
-                              {isDNF ? (r.dsq ? "DSQ" : r.dns ? "DNS" : "DNF") : r.position}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className="w-1 h-6 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
-                              <span className="font-bold text-white">{d?.name_acronym ?? `#${r.driver_number}`}</span>
-                              <span className="text-xs text-[#64748B] hidden sm:inline">{d?.full_name}</span>
-                              {isFastest && (
-                                <span className="text-[10px] font-black text-[#A855F7] bg-[#A855F7]/15 border border-[#A855F7]/30 px-1 py-0.5 rounded">FL</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-[#64748B] text-xs hidden sm:table-cell">
-                            {d?.team_name ?? "—"}
-                          </td>
-                          {(isRaceType || isQualType) && (
-                            <td className="px-4 py-3 text-right text-[#64748B] font-mono text-xs hidden md:table-cell">
-                              {gridPos?.position ?? "—"}
+                        return (
+                          <tr
+                            key={r.driver_number}
+                            className="border-b border-[#2D2D3A]/50 hover:bg-white/[0.02] transition-colors last:border-0"
+                          >
+                            {/* 순위 */}
+                            <td className="px-3 py-3">
+                              <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center text-xs font-black ${posColor(r.position)}`}>
+                                {r.position}
+                              </span>
                             </td>
-                          )}
-                          <td className="px-4 py-3 text-right font-mono text-xs">
-                            {isFpType || isQualType
-                              ? <span className="text-white">{fmtLap(fastLap?.lap_duration ?? null)}</span>
-                              : <span className="text-[#94A3B8]">{isDNF ? <span className="text-[#EF4444]">—</span> : fmtGap(r.gap_to_leader)}</span>
-                            }
-                          </td>
-                          {isRaceType && (
-                            <td className="px-4 py-3 text-right text-[#64748B] text-xs hidden md:table-cell">
-                              {r.number_of_laps}
+                            {/* 드라이버 */}
+                            <td className="px-3 py-3">
+                              <div className="flex items-center gap-2">
+                                {d?.headshot_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={d.headshot_url}
+                                    alt={d.name_acronym}
+                                    className="w-7 h-7 rounded-full object-cover object-top bg-[#2D2D3A] shrink-0"
+                                  />
+                                ) : (
+                                  <span className="w-7 h-7 rounded-full bg-[#2D2D3A] flex items-center justify-center text-[10px] text-[#64748B] font-bold shrink-0">
+                                    {d?.name_acronym?.slice(0, 2) ?? "?"}
+                                  </span>
+                                )}
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-white text-sm leading-none">{d?.name_acronym ?? `#${r.driver_number}`}</span>
+                                    {isFastest && (
+                                      <span className="text-[9px] font-black text-[#A855F7] bg-[#A855F7]/15 border border-[#A855F7]/30 px-1 py-0.5 rounded leading-none">FL</span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-[#64748B] mt-0.5 leading-none hidden sm:block">
+                                    {d?.full_name}
+                                  </div>
+                                </div>
+                              </div>
                             </td>
-                          )}
-                          {isFpType && (
-                            <td className="px-4 py-3 text-right font-mono text-[10px] text-[#64748B] hidden lg:table-cell">
+                            {/* 팀 */}
+                            <td className="px-3 py-3 hidden sm:table-cell">
+                              <span className="text-xs" style={{ color: teamColor }}>{d?.team_name ?? "—"}</span>
+                            </td>
+                            {/* 타이어 */}
+                            <td className="px-3 py-3 text-center hidden md:table-cell">
+                              {compound ? (
+                                <span
+                                  className="inline-flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-black border-2"
+                                  style={{ borderColor: compoundColor, color: compoundColor }}
+                                  title={compound}
+                                >
+                                  {compound[0]}
+                                </span>
+                              ) : <span className="text-[#475569]">—</span>}
+                            </td>
+                            {/* 랩수 */}
+                            <td className="px-3 py-3 text-right text-[#64748B] text-xs hidden sm:table-cell">
+                              {r.number_of_laps}L
+                            </td>
+                            {/* 베스트 랩 */}
+                            <td className="px-3 py-3 text-right font-mono text-xs">
+                              <span className={isFastest ? "text-[#A855F7] font-bold" : "text-white"}>
+                                {fmtLap(fastLap?.lap_duration ?? null)}
+                              </span>
+                            </td>
+                            {/* 갭 */}
+                            <td className="px-3 py-3 text-right font-mono text-xs text-[#64748B] hidden md:table-cell">
+                              {gap === 0 ? <span className="text-[#E8002D] font-bold">리더</span>
+                                : gap != null ? `+${gap.toFixed(3)}`
+                                : "—"}
+                            </td>
+                            {/* S1 */}
+                            <td className="px-3 py-3 text-right font-mono text-[11px] text-[#64748B] hidden lg:table-cell">
                               {fastLap?.duration_sector_1?.toFixed(3) ?? "—"}
                             </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                            {/* S2 */}
+                            <td className="px-3 py-3 text-right font-mono text-[11px] text-[#64748B] hidden lg:table-cell">
+                              {fastLap?.duration_sector_2?.toFixed(3) ?? "—"}
+                            </td>
+                            {/* S3 */}
+                            <td className="px-3 py-3 text-right font-mono text-[11px] text-[#64748B] hidden lg:table-cell">
+                              {fastLap?.duration_sector_3?.toFixed(3) ?? "—"}
+                            </td>
+                            {/* 탑스피드 */}
+                            <td className="px-3 py-3 text-right text-[11px] text-[#64748B] hidden xl:table-cell">
+                              {fastLap?.st_speed != null ? `${fastLap.st_speed} km/h` : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+          )}
+
+          {/* ── 퀄리파잉 / 레이스 결과 테이블 ── */}
+          {!isFpType && (
+            <section>
+              <h2 className="text-xl font-bold text-white mb-4">
+                {isQualType ? "그리드 순위" : "레이스 결과"}
+              </h2>
+              <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#2D2D3A]">
+                        <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase w-10">#</th>
+                        <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase">드라이버</th>
+                        <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase hidden sm:table-cell">팀</th>
+                        {(isRaceType || isQualType) && (
+                          <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase hidden md:table-cell">그리드</th>
+                        )}
+                        <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase font-mono">
+                          {isQualType ? "베스트 랩" : "갭"}
+                        </th>
+                        {isRaceType && (
+                          <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase hidden md:table-cell">랩수</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedResults.map((r) => {
+                        const d = driverMap.get(r.driver_number);
+                        const teamColor = d?.team_colour
+                          ? (d.team_colour.startsWith("#") ? d.team_colour : `#${d.team_colour}`)
+                          : "#64748B";
+                        const fastLap = fastestLapMap.get(r.driver_number);
+                        const gridPos = gridMap.get(r.driver_number);
+                        const isDNF = r.dnf || r.dsq || r.dns;
+                        const isFastest = overallFastest?.driverNumber === r.driver_number;
+
+                        return (
+                          <tr
+                            key={r.driver_number}
+                            className="border-b border-[#2D2D3A]/50 hover:bg-white/[0.02] transition-colors last:border-0"
+                          >
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex w-7 h-7 rounded-full items-center justify-center text-xs font-black ${posColor(r.position)}`}>
+                                {isDNF ? (r.dsq ? "DSQ" : r.dns ? "DNS" : "DNF") : r.position}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span className="w-1 h-6 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
+                                <span className="font-bold text-white">{d?.name_acronym ?? `#${r.driver_number}`}</span>
+                                <span className="text-xs text-[#64748B] hidden sm:inline">{d?.full_name}</span>
+                                {isFastest && (
+                                  <span className="text-[10px] font-black text-[#A855F7] bg-[#A855F7]/15 border border-[#A855F7]/30 px-1 py-0.5 rounded">FL</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-[#64748B] text-xs hidden sm:table-cell">
+                              {d?.team_name ?? "—"}
+                            </td>
+                            {(isRaceType || isQualType) && (
+                              <td className="px-4 py-3 text-right text-[#64748B] font-mono text-xs hidden md:table-cell">
+                                {gridPos?.position ?? "—"}
+                              </td>
+                            )}
+                            <td className="px-4 py-3 text-right font-mono text-xs">
+                              {isQualType
+                                ? <span className="text-white">{fmtLap(fastLap?.lap_duration ?? null)}</span>
+                                : <span className="text-[#94A3B8]">{isDNF ? <span className="text-[#EF4444]">—</span> : fmtGap(r.gap_to_leader)}</span>
+                              }
+                            </td>
+                            {isRaceType && (
+                              <td className="px-4 py-3 text-right text-[#64748B] text-xs hidden md:table-cell">
+                                {r.number_of_laps}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* ── FP 타이어 사용 현황 ── */}
+          {isFpType && stints.length > 0 && (
+            <section>
+              <h2 className="text-xl font-bold text-white mb-4">타이어 사용 현황</h2>
+              <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-[#2D2D3A]">
+                        <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase">드라이버</th>
+                        <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase">사용 컴파운드</th>
+                        <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase hidden sm:table-cell">피트 횟수</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedResults.map((r) => {
+                        const d = driverMap.get(r.driver_number);
+                        const teamColor = d?.team_colour
+                          ? (d.team_colour.startsWith("#") ? d.team_colour : `#${d.team_colour}`)
+                          : "#64748B";
+                        const driverStints = stints
+                          .filter((s) => s.driver_number === r.driver_number)
+                          .sort((a, b) => a.stint_number - b.stint_number);
+                        const driverPits = pitsByDriver.get(r.driver_number) ?? [];
+                        if (driverStints.length === 0) return null;
+                        return (
+                          <tr key={r.driver_number} className="border-b border-[#2D2D3A]/50 hover:bg-white/[0.02] last:border-0">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span className="w-1 h-5 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
+                                <span className="font-bold text-white text-sm">{d?.name_acronym ?? `#${r.driver_number}`}</span>
+                                <span className="text-xs text-[#64748B] hidden sm:inline">{d?.full_name}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {driverStints.map((s, i) => (
+                                  <div key={i} className="flex items-center gap-1">
+                                    <span
+                                      className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border"
+                                      style={{
+                                        color: COMPOUND_COLOR[s.compound] ?? "#94A3B8",
+                                        borderColor: (COMPOUND_COLOR[s.compound] ?? "#94A3B8") + "40",
+                                        backgroundColor: (COMPOUND_COLOR[s.compound] ?? "#94A3B8") + "10",
+                                      }}
+                                    >
+                                      {s.compound[0]}
+                                      <span className="text-[#64748B] font-normal text-[10px]">
+                                        {s.lap_start}–{s.lap_end ?? "?"}L
+                                      </span>
+                                    </span>
+                                    {i < driverStints.length - 1 && <span className="text-[#64748B] text-xs">→</span>}
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right text-white font-bold text-sm hidden sm:table-cell">
+                              {driverPits.length}회
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* ── 타이어 전략 (레이스/스프린트) ── */}
           {isRaceType && stints.length > 0 && (

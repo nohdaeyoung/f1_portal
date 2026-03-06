@@ -2,63 +2,12 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { modernChampions, classicChampions, multiChampions } from "@/data/f1-champions";
 import { teams } from "@/data/f1-data";
+import { f1Eras } from "@/data/f1-eras";
 
 export const metadata: Metadata = {
   title: "F1 역사",
   description: "포뮬러 1의 역사 — 역대 드라이버 & 컨스트럭터 챔피언, 다중 챔피언, 시대별 강팀 기록.",
 };
-
-// 시대 구분
-const eras = [
-  {
-    name: "태동기",
-    period: "1950–1957",
-    desc: "알파 로메오, 페라리, 마세라티가 경쟁하던 초창기. 판지오가 5번의 타이틀로 최고의 드라이버로 군림.",
-    color: "#94A3B8",
-  },
-  {
-    name: "영국 시대",
-    period: "1958–1969",
-    desc: "Cooper, BRM, Lotus, Tyrrell 등 영국 팀들이 주도. 짐 클라크, 재키 스튜어트의 전성기.",
-    color: "#60A5FA",
-  },
-  {
-    name: "터보 시대",
-    period: "1977–1988",
-    desc: "터보차저 도입으로 출력 경쟁. 르노, 맥라렌, 윌리엄스, 페라리가 각축. 프로스트-세나 라이벌리 시작.",
-    color: "#F59E0B",
-  },
-  {
-    name: "윌리엄스·맥라렌 전성기",
-    period: "1988–1997",
-    desc: "맥라렌-혼다의 황금기, 세나-프로스트 전쟁, 이후 윌리엄스 지배. F1 역사상 가장 드라마틱한 라이벌리.",
-    color: "#FF8000",
-  },
-  {
-    name: "슈마허·페라리 왕조",
-    period: "2000–2004",
-    desc: "미하엘 슈마허와 페라리의 5연속 더블 챔피언. 역사상 가장 지배적인 팀·드라이버 조합.",
-    color: "#DC0000",
-  },
-  {
-    name: "레드불·베텔 시대",
-    period: "2010–2013",
-    desc: "레드불의 4연속 컨스트럭터 우승. 세바스티안 베텔이 최연소 4회 챔피언 기록 수립.",
-    color: "#3671C6",
-  },
-  {
-    name: "메르세데스 왕조",
-    period: "2014–2021",
-    desc: "V6 하이브리드 터보 도입 이후 8연속 컨스트럭터 챔피언. 해밀턴 7번째 타이틀로 슈마허 타이 기록.",
-    color: "#00D2BE",
-  },
-  {
-    name: "베르스타펜 시대",
-    period: "2021–현재",
-    desc: "막스 베르스타펜이 4연속 드라이버 챔피언 달성. 레드불 지배 속 2024년 맥라렌의 컨스트럭터 역전.",
-    color: "#3671C6",
-  },
-];
 
 export default function HistoryPage() {
   // 팀 컨스트럭터 타이틀 수 (현재 팀들 — f1-data 기준)
@@ -256,28 +205,32 @@ export default function HistoryPage() {
         <h2 className="text-2xl font-black text-white mb-2">시대별 이야기</h2>
         <p className="text-sm text-[#64748B] mb-6">F1의 역사를 지배한 시대와 팀들</p>
         <div className="space-y-3">
-          {eras.map((era) => (
-            <div
-              key={era.name}
-              className="bg-[#141420] border border-[#2D2D3A] rounded-xl p-5 flex gap-4"
+          {f1Eras.map((era) => (
+            <Link
+              key={era.slug}
+              href={`/history/era/${era.slug}`}
+              className="bg-[#141420] border border-[#2D2D3A] rounded-xl p-5 flex gap-4 hover:border-[#3D3D50] hover:-translate-y-0.5 transition-all group block"
             >
               <div
                 className="shrink-0 w-1 rounded-full self-stretch"
-                style={{ backgroundColor: era.color }}
+                style={{ backgroundColor: era.theme.primary }}
               />
-              <div>
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1.5">
                   <h3 className="font-bold text-white text-sm">{era.name}</h3>
                   <span
                     className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#0D0D14] border border-[#2D2D3A]"
-                    style={{ color: era.color }}
+                    style={{ color: era.theme.primary }}
                   >
                     {era.period}
                   </span>
                 </div>
-                <p className="text-sm text-[#64748B] leading-relaxed">{era.desc}</p>
+                <p className="text-sm text-[#64748B] leading-relaxed">{era.tagline}</p>
               </div>
-            </div>
+              <div className="shrink-0 self-center text-[#475569] group-hover:text-[#64748B] transition-colors text-sm">
+                →
+              </div>
+            </Link>
           ))}
         </div>
       </section>

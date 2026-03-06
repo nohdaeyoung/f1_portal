@@ -140,6 +140,10 @@ function RaceControlPanel({ messages }: { messages: RaceCtrl[] }) {
         )}
         {recent.map((m, i) => {
           const color = FLAG_COLOR[m.flag ?? ""] ?? "#94A3B8";
+          const t = new Date(m.date);
+          const timeStr = !isNaN(t.getTime())
+            ? t.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+            : null;
           return (
             <div key={i} className="flex items-start gap-2">
               {m.flag && (
@@ -148,7 +152,12 @@ function RaceControlPanel({ messages }: { messages: RaceCtrl[] }) {
                   style={{ backgroundColor: color }}
                 />
               )}
-              <p className="text-xs text-[#94A3B8] leading-snug">{m.message}</p>
+              <div className="min-w-0">
+                {timeStr && (
+                  <span className="text-[10px] font-mono text-[#475569] mr-1.5">{timeStr}</span>
+                )}
+                <span className="text-xs text-[#94A3B8] leading-snug">{m.message}</span>
+              </div>
             </div>
           );
         })}
@@ -158,8 +167,15 @@ function RaceControlPanel({ messages }: { messages: RaceCtrl[] }) {
 }
 
 function LapsPanel({ laps }: { laps: Lap[] }) {
-  const sorted = [...laps].sort((a, b) => a.lap_duration! - b.lap_duration!);
-  const fastest = sorted.find((l) => l.lap_duration);
+  // 패스티스트 랩: lap_duration 오름차순 (null 제외)
+  const withTime = laps.filter((l) => l.lap_duration != null);
+  const fastest = withTime.length > 0
+    ? withTime.reduce((a, b) => a.lap_duration! < b.lap_duration! ? a : b)
+    : null;
+  // 최근 랩 5개: lap_number 내림차순
+  const recent = [...laps]
+    .sort((a, b) => b.lap_number - a.lap_number)
+    .slice(0, 5);
 
   return (
     <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl p-4">
@@ -174,7 +190,7 @@ function LapsPanel({ laps }: { laps: Lap[] }) {
             <p className="text-xs text-[#64748B]">{DRIVER_MAP[fastest.driver_number]?.abbr ?? `#${fastest.driver_number}`} · L{fastest.lap_number}</p>
           </div>
         )}
-        {laps.slice(0, 5).map((l, i) => {
+        {recent.map((l, i) => {
           const d = DRIVER_MAP[l.driver_number];
           return (
             <div key={i} className="flex items-center gap-2">
@@ -184,7 +200,9 @@ function LapsPanel({ laps }: { laps: Lap[] }) {
               />
               <span className="text-xs font-bold text-white w-8">{d?.abbr ?? `#${l.driver_number}`}</span>
               <span className="text-xs text-[#64748B] tabular-nums">L{l.lap_number}</span>
-              <span className="text-xs text-white tabular-nums ml-auto">{fmtLap(l.lap_duration)}</span>
+              <span className="text-xs text-white tabular-nums ml-auto">
+                {l.lap_duration != null ? fmtLap(l.lap_duration) : <span className="text-[#475569]">기록 중</span>}
+              </span>
             </div>
           );
         })}
@@ -223,7 +241,7 @@ function TyrePanel({ stints, pits }: { stints: Stint[]; pits: Pit[] }) {
               <span className="text-xs font-bold" style={{ color }}>{s.compound[0]}</span>
               <span className="text-xs text-[#64748B]">+{s.tyre_age_at_start}랩</span>
               {lastPit?.pit_duration && (
-                <span className="text-xs text-[#64748B] ml-auto">{lastPit.pit_duration.toFixed(1)}s</span>
+                <span className="text-xs text-[#64748B] ml-auto" title="마지막 피트스톱 소요시간">핏 {lastPit.pit_duration.toFixed(1)}s</span>
               )}
             </div>
           );
@@ -347,9 +365,10 @@ export default function LiveSessionDashboard() {
       ofetch<Interval>("/intervals", { session_key: sk }),
       ofetch<RaceCtrl>("/race_control", { session_key: sk }),
     ]);
-    if (pos.status === "fulfilled") setPositions(latest(pos.value));
-    if (inv.status === "fulfilled") setIntervals(latest(inv.value));
-    if (rc.status === "fulfilled")  setRaceControl(rc.value);
+    // 빈 배열로 덮어쓰지 않음 — 마지막 유효 데이터 유지
+    if (pos.status === "fulfilled" && pos.value.length > 0) setPositions(latest(pos.value));
+    if (inv.status === "fulfilled" && inv.value.length > 0) setIntervals(latest(inv.value));
+    if (rc.status === "fulfilled"  && rc.value.length > 0)  setRaceControl(rc.value);
   }, []);
 
   // 준실시간 데이터 (10~30초)
@@ -360,10 +379,10 @@ export default function LiveSessionDashboard() {
       ofetch<Pit>("/pit", { session_key: sk }),
       ofetch<Weather>("/weather", { session_key: sk }),
     ]);
-    if (lapData.status === "fulfilled")     setLaps(latest(lapData.value));
-    if (stintData.status === "fulfilled")   setStints(stintData.value);
-    if (pitData.status === "fulfilled")     setPits(latest(pitData.value));
-    if (weatherData.status === "fulfilled") {
+    if (lapData.status === "fulfilled"   && lapData.value.length > 0)   setLaps(latest(lapData.value));
+    if (stintData.status === "fulfilled" && stintData.value.length > 0) setStints(stintData.value);
+    if (pitData.status === "fulfilled"   && pitData.value.length > 0)   setPits(latest(pitData.value));
+    if (weatherData.status === "fulfilled" && weatherData.value.length > 0) {
       const arr = weatherData.value;
       setWeather(arr[arr.length - 1] ?? null);
     }

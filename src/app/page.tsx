@@ -315,15 +315,22 @@ function RaceWeekendHero({ info }: { info: RaceWeekendInfo }) {
               </span>
             </div>
           ) : nextSession ? (
-            <div className="bg-black/40 rounded-2xl px-5 py-4 text-right border border-white/10 shrink-0">
-              <span className="block text-xs text-[#64748B] uppercase tracking-widest mb-1">
-                다음 세션
-              </span>
-              <span className="block text-xl font-black text-white">{nextSession.name}</span>
-              <span className="block text-sm text-[#E8002D] font-mono mt-0.5">
-                {formatKST(nextSession.time)}
-              </span>
-            </div>
+            (() => {
+              const msUntil = new Date(nextSession.time).getTime() - Date.now();
+              return msUntil < 86_400_000 ? (
+                <CountdownTimer targetIso={nextSession.time} label={`${nextSession.name}까지`} />
+              ) : (
+                <div className="bg-black/40 rounded-2xl px-5 py-4 text-right border border-white/10 shrink-0">
+                  <span className="block text-xs text-[#64748B] uppercase tracking-widest mb-1">
+                    다음 세션
+                  </span>
+                  <span className="block text-xl font-black text-white">{nextSession.name}</span>
+                  <span className="block text-sm text-[#E8002D] font-mono mt-0.5">
+                    {formatKST(nextSession.time)}
+                  </span>
+                </div>
+              );
+            })()
           ) : null}
         </div>
 
