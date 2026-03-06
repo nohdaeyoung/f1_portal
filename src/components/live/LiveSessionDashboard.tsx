@@ -351,6 +351,7 @@ export default function LiveSessionDashboard() {
 
   const isRace = sessionType === "Race" || sessionType === "Sprint";
   const displayName = sessionName || sessionType;
+  const hasData = positions.length > 0 || raceControl.length > 0 || laps.length > 0 || stints.length > 0 || weather !== null;
 
   return (
     <div className="space-y-3">
@@ -360,28 +361,46 @@ export default function LiveSessionDashboard() {
             <span className="w-1.5 h-1.5 rounded-full bg-[#E8002D] animate-pulse" />
             라이브
           </span>
+        ) : hasData ? (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold text-[#64748B] uppercase tracking-widest">
+            세션 종료
+          </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold text-[#64748B] uppercase tracking-widest">
             세션 대기
           </span>
         )}
-        <span className="text-xs text-[#64748B]">{displayName}{isActive ? " 진행 중" : ""}</span>
+        <span className="text-xs text-[#64748B]">
+          {displayName}
+          {isActive ? " 진행 중" : hasData ? " 결과" : ""}
+        </span>
       </div>
 
-      {/* 실시간 패널 (4초) */}
+      {/* 실시간 패널 (4초 / 세션 후 전체 공개) */}
       <div className={`grid gap-3 ${isRace ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 sm:grid-cols-2"}`}>
         {positions.length > 0 && (
           <StandingsPanel positions={positions} intervals={intervals} />
         )}
-        <RaceControlPanel messages={raceControl} />
+        {(isActive || raceControl.length > 0) && (
+          <RaceControlPanel messages={raceControl} />
+        )}
       </div>
 
-      {/* 준실시간 패널 (15초) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {laps.length > 0 && <LapsPanel laps={laps} />}
-        {stints.length > 0 && <TyrePanel stints={stints} pits={pits} />}
-        <WeatherPanel weather={weather} />
-      </div>
+      {/* 준실시간 패널 (15초 / 세션 후 전체 공개) */}
+      {(laps.length > 0 || stints.length > 0 || weather !== null) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {laps.length > 0 && <LapsPanel laps={laps} />}
+          {stints.length > 0 && <TyrePanel stints={stints} pits={pits} />}
+          <WeatherPanel weather={weather} />
+        </div>
+      )}
+
+      {/* 세션 종료 후 데이터 없을 때 */}
+      {!isActive && !hasData && (
+        <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl px-5 py-4 text-sm text-[#64748B]">
+          세션 데이터를 불러오는 중입니다...
+        </div>
+      )}
     </div>
   );
 }

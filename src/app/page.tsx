@@ -67,14 +67,19 @@ function getSessionList(s: SessionSchedule): { key: string; name: string; time: 
   return list;
 }
 
+const SESSION_DURATIONS: Record<string, number> = {
+  fp1: 100, fp2: 100, fp3: 100, sq: 95, sprint: 75, qualifying: 100, race: 180,
+};
+
 interface RaceWeekendInfo {
   isWeekend: boolean;
   nextSession: { key: string; name: string; time: string } | null;
+  liveSession: { key: string; name: string; time: string } | null;
   currentRace: RaceCalendar | null;
 }
 
 function getRaceWeekendInfo(nextRace: RaceCalendar | undefined): RaceWeekendInfo {
-  const empty: RaceWeekendInfo = { isWeekend: false, nextSession: null, currentRace: null };
+  const empty: RaceWeekendInfo = { isWeekend: false, nextSession: null, liveSession: null, currentRace: null };
   if (!nextRace?.sessions) return empty;
 
   const now = Date.now();
@@ -85,8 +90,14 @@ function getRaceWeekendInfo(nextRace: RaceCalendar | undefined): RaceWeekendInfo
 
   if (now < firstTime || now > raceEndTime) return empty;
 
+  const liveSession = sessions.find((sess) => {
+    const start = new Date(sess.time).getTime();
+    const dur = SESSION_DURATIONS[sess.key] ?? 120;
+    return now >= start && now <= start + dur * 60_000;
+  }) ?? null;
+
   const nextSession = sessions.find((sess) => new Date(sess.time).getTime() > now) ?? null;
-  return { isWeekend: true, nextSession, currentRace: nextRace };
+  return { isWeekend: true, nextSession, liveSession, currentRace: nextRace };
 }
 
 // ─── Session Timetable (shared) ────────────────────────────────
@@ -94,22 +105,27 @@ function getRaceWeekendInfo(nextRace: RaceCalendar | undefined): RaceWeekendInfo
 function SessionTimetable({
   sessions,
   highlightKey,
+  liveKey,
 }: {
   sessions: { key: string; name: string; time: string }[];
   highlightKey?: string | null;
+  liveKey?: string | null;
 }) {
   const now = Date.now();
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
       {sessions.map((sess) => {
         const isPast = new Date(sess.time).getTime() < now;
-        const isHighlight = sess.key === highlightKey;
+        const isLive = sess.key === liveKey;
+        const isHighlight = sess.key === highlightKey && !isLive;
         const isRace = sess.key === "race";
         return (
           <div
             key={sess.key}
             className={`rounded-xl px-3 py-3 border text-center ${
-              isHighlight
+              isLive
+                ? "bg-[#E8002D]/25 border-[#E8002D] ring-1 ring-[#E8002D]/50"
+                : isHighlight
                 ? "bg-[#E8002D]/20 border-[#E8002D]/50 ring-1 ring-[#E8002D]/30"
                 : isRace && !isPast
                 ? "bg-[#E8002D]/10 border-[#E8002D]/30"
@@ -120,10 +136,11 @@ function SessionTimetable({
           >
             <span
               className={`block text-xs font-bold mb-1 ${
-                isHighlight ? "text-[#E8002D]" : "text-[#64748B]"
+                isLive ? "text-[#E8002D]" : isHighlight ? "text-[#E8002D]" : "text-[#64748B]"
               }`}
             >
               {sess.name}
+              {isLive && <span className="ml-1 animate-pulse">●</span>}
               {isHighlight && " ▶"}
             </span>
             <span className="block text-xs text-white font-mono leading-tight">
@@ -218,7 +235,7 @@ function NextRaceHero({ race }: { race: RaceCalendar }) {
 // ─── Race Weekend Hero ──────────────────────────────────────────
 
 function RaceWeekendHero({ info }: { info: RaceWeekendInfo }) {
-  const { currentRace, nextSession } = info;
+  const { currentRace, nextSession, liveSession } = info;
   if (!currentRace) return null;
   const circuit = getCircuit(currentRace.circuitId);
   const sessions = currentRace.sessions ? getSessionList(currentRace.sessions) : [];
@@ -226,15 +243,31 @@ function RaceWeekendHero({ info }: { info: RaceWeekendInfo }) {
   return (
     <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#2a0008] to-[#1a0005] border border-[#E8002D]/40">
       <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=40 height=40 viewBox=0 0 40 40 xmlns=http://www.w3.org/2000/svg%3E%3Cg fill=%23E8002D fill-opacity=0.03%3E%3Cpath d=M0 20 L20 0 L40 20 L20 40 z/%3E%3C/g%3E%3C/svg%3E')]" />
+      {/* Live session banner */}
+      {liveSession && (
+        <div className="relative flex items-center gap-3 bg-[#E8002D] px-8 sm:px-10 py-2.5">
+          <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+          <span className="text-white text-sm font-black uppercase tracking-widest">
+            LIVE — {liveSession.name} 진행 중
+          </span>
+        </div>
+      )}
       <div className="relative p-8 sm:p-10">
         {/* Header */}
         <div className="flex items-start justify-between flex-wrap gap-4 mb-6">
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E8002D] text-white text-xs font-black uppercase tracking-widest rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                RACE WEEK
-              </span>
+              {liveSession ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E8002D] text-white text-xs font-black uppercase tracking-widest rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                  LIVE NOW
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#E8002D] text-white text-xs font-black uppercase tracking-widest rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  RACE WEEK
+                </span>
+              )}
               <span className="text-xs text-[#E8002D]/70 font-bold">Round {currentRace.round}</span>
             </div>
             <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
@@ -245,7 +278,17 @@ function RaceWeekendHero({ info }: { info: RaceWeekendInfo }) {
             </p>
           </div>
 
-          {nextSession && (
+          {liveSession ? (
+            <div className="bg-[#E8002D]/20 rounded-2xl px-5 py-4 text-right border border-[#E8002D]/40 shrink-0">
+              <span className="block text-xs text-[#E8002D]/70 uppercase tracking-widest mb-1">
+                현재 세션
+              </span>
+              <span className="block text-xl font-black text-white">{liveSession.name}</span>
+              <span className="block text-sm text-[#E8002D] font-mono mt-0.5">
+                {formatKST(liveSession.time)} ~
+              </span>
+            </div>
+          ) : nextSession ? (
             <div className="bg-black/40 rounded-2xl px-5 py-4 text-right border border-white/10 shrink-0">
               <span className="block text-xs text-[#64748B] uppercase tracking-widest mb-1">
                 다음 세션
@@ -255,13 +298,13 @@ function RaceWeekendHero({ info }: { info: RaceWeekendInfo }) {
                 {formatKST(nextSession.time)}
               </span>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Session timetable */}
         {sessions.length > 0 && (
           <div className="mb-6">
-            <SessionTimetable sessions={sessions} highlightKey={nextSession?.key} />
+            <SessionTimetable sessions={sessions} liveKey={liveSession?.key} highlightKey={nextSession?.key} />
           </div>
         )}
 
