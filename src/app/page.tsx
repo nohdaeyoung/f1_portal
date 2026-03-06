@@ -112,10 +112,12 @@ function SessionTimetable({
   sessions,
   highlightKey,
   liveKey,
+  round,
 }: {
   sessions: { key: string; name: string; time: string }[];
   highlightKey?: string | null;
   liveKey?: string | null;
+  round?: number;
 }) {
   const now = Date.now();
   return (
@@ -125,21 +127,9 @@ function SessionTimetable({
         const isLive = sess.key === liveKey;
         const isHighlight = sess.key === highlightKey && !isLive;
         const isRace = sess.key === "race";
-        return (
-          <div
-            key={sess.key}
-            className={`rounded-xl px-3 py-3 border text-center ${
-              isLive
-                ? "bg-[#E8002D]/25 border-[#E8002D] ring-1 ring-[#E8002D]/50"
-                : isHighlight
-                ? "bg-[#E8002D]/20 border-[#E8002D]/50 ring-1 ring-[#E8002D]/30"
-                : isRace && !isPast
-                ? "bg-[#E8002D]/10 border-[#E8002D]/30"
-                : isPast
-                ? "bg-white/[0.02] border-white/[0.04] opacity-40"
-                : "bg-white/[0.04] border-white/[0.08]"
-            }`}
-          >
+        const hasResult = isPast && !isLive && round != null;
+        const inner = (
+          <>
             <span
               className={`block text-xs font-bold mb-1 ${
                 isLive ? "text-[#E8002D]" : isHighlight ? "text-[#E8002D]" : "text-[#64748B]"
@@ -152,6 +142,29 @@ function SessionTimetable({
             <span className="block text-xs text-white font-mono leading-tight">
               {formatKST(sess.time)}
             </span>
+            {hasResult && (
+              <span className="block text-[10px] text-[#E8002D] mt-1 font-bold">결과 보기 →</span>
+            )}
+          </>
+        );
+        const cls = `rounded-xl px-3 py-3 border text-center ${
+          isLive
+            ? "bg-[#E8002D]/25 border-[#E8002D] ring-1 ring-[#E8002D]/50"
+            : isHighlight
+            ? "bg-[#E8002D]/20 border-[#E8002D]/50 ring-1 ring-[#E8002D]/30"
+            : isRace && !isPast
+            ? "bg-[#E8002D]/10 border-[#E8002D]/30"
+            : isPast
+            ? "bg-white/[0.02] border-white/[0.04] opacity-40 hover:opacity-70 transition-opacity"
+            : "bg-white/[0.04] border-white/[0.08]"
+        }`;
+        return hasResult ? (
+          <Link key={sess.key} href={`/season/race/${round}/${sess.key}`} className={cls}>
+            {inner}
+          </Link>
+        ) : (
+          <div key={sess.key} className={cls}>
+            {inner}
           </div>
         );
       })}
@@ -207,7 +220,7 @@ function NextRaceHero({ race }: { race: RaceCalendar }) {
             <p className="text-xs text-[#64748B] uppercase tracking-widest mb-3">
               세션 일정 (KST)
             </p>
-            <SessionTimetable sessions={sessions} />
+            <SessionTimetable sessions={sessions} round={race.round} />
           </div>
         )}
 
@@ -310,7 +323,7 @@ function RaceWeekendHero({ info }: { info: RaceWeekendInfo }) {
         {/* Session timetable */}
         {sessions.length > 0 && (
           <div className="mb-6">
-            <SessionTimetable sessions={sessions} liveKey={liveSession?.key} highlightKey={nextSession?.key} />
+            <SessionTimetable sessions={sessions} liveKey={liveSession?.key} highlightKey={nextSession?.key} round={currentRace.round} />
           </div>
         )}
 
