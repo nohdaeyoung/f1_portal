@@ -75,8 +75,10 @@ const ALL_SESSIONS: { key: SessionKey; ko: string; sprint?: boolean }[] = [
 
 function SessionTimetable({
   sessions,
+  round,
 }: {
   sessions: NonNullable<Awaited<ReturnType<typeof fetchCalendar>>[0]["sessions"]>;
+  round: number;
 }) {
   const rows = ALL_SESSIONS.filter(({ key, sprint }) => {
     const val = sessions[key] as string | undefined;
@@ -93,48 +95,40 @@ function SessionTimetable({
         const { date, time, past } = fmtKST(iso);
         const isRace = key === "race";
         const isSprint = key === "sprint";
-        return (
+        const inner = (
           <div
-            key={key}
             className={`flex items-center justify-between px-5 py-4 ${
               i < rows.length - 1 ? "border-b border-[#2D2D3A]" : ""
-            } ${past ? "opacity-40" : ""}`}
+            } ${past ? "" : "opacity-60"} ${past ? "hover:bg-white/[0.02]" : ""} transition-colors`}
           >
             <div className="flex items-center gap-3">
-              {isRace && (
-                <span className="w-2 h-2 rounded-full bg-[#E8002D] shrink-0" />
-              )}
-              {isSprint && (
-                <span className="w-2 h-2 rounded-full bg-[#FF6700] shrink-0" />
-              )}
+              {isRace && <span className="w-2 h-2 rounded-full bg-[#E8002D] shrink-0" />}
+              {isSprint && <span className="w-2 h-2 rounded-full bg-[#FF6700] shrink-0" />}
               <span
                 className={`text-sm font-bold ${
-                  isRace
-                    ? "text-white"
-                    : isSprint
-                    ? "text-[#FF6700]"
-                    : "text-[#94A3B8]"
+                  isRace ? "text-white" : isSprint ? "text-[#FF6700]" : "text-[#94A3B8]"
                 }`}
               >
                 {ko}
               </span>
               {past && (
-                <span className="text-[10px] text-[#64748B] font-medium bg-white/5 px-1.5 py-0.5 rounded">
-                  완료
+                <span className="text-[10px] text-[#22C55E] font-medium bg-[#22C55E]/10 border border-[#22C55E]/20 px-1.5 py-0.5 rounded">
+                  결과 보기 →
                 </span>
               )}
             </div>
             <div className="text-right">
-              <span
-                className={`text-sm font-mono font-bold ${
-                  isRace ? "text-[#E8002D]" : "text-white"
-                }`}
-              >
+              <span className={`text-sm font-mono font-bold ${isRace ? "text-[#E8002D]" : "text-white"}`}>
                 {time} KST
               </span>
               <span className="block text-xs text-[#64748B] mt-0.5">{date}</span>
             </div>
           </div>
+        );
+        return past ? (
+          <Link key={key} href={`/season/race/${round}/${key}`}>{inner}</Link>
+        ) : (
+          <div key={key}>{inner}</div>
         );
       })}
     </div>
@@ -443,7 +437,7 @@ export default async function GrandPrixPage({
       {race.sessions && (
         <section className="mb-10">
           <h2 className="text-xl font-bold text-white mb-4">세션 일정 (KST)</h2>
-          <SessionTimetable sessions={race.sessions} />
+          <SessionTimetable sessions={race.sessions} round={roundNum} />
         </section>
       )}
 

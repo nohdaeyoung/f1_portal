@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
 const BASE = "https://api.openf1.org/v1";
 
@@ -282,6 +282,18 @@ export default function LiveSessionDashboard() {
   const [pits, setPits] = useState<Pit[]>([]);
   const [weather, setWeather] = useState<Weather | null>(null);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+  const prevHasDataRef = useRef(false);
+  const notifPermRef = useRef<NotificationPermission>("default");
+
+  // 알림 권한 요청 (마운트 시 한 번)
+  useEffect(() => {
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission().then((p) => { notifPermRef.current = p; });
+    } else if (typeof Notification !== "undefined") {
+      notifPermRef.current = Notification.permission;
+    }
+  }, []);
 
   // 세션 키 조회
   useEffect(() => {
@@ -353,8 +365,37 @@ export default function LiveSessionDashboard() {
   const displayName = sessionName || sessionType;
   const hasData = positions.length > 0 || raceControl.length > 0 || laps.length > 0 || stints.length > 0 || weather !== null;
 
+  // 데이터가 처음 수집됐을 때 알림
+  if (!prevHasDataRef.current && hasData) {
+    prevHasDataRef.current = true;
+    const msg = `${displayName} 세션 데이터가 수집되었습니다.`;
+    setToast(msg);
+    setTimeout(() => setToast(null), 6000);
+    if (typeof Notification !== "undefined" && notifPermRef.current === "granted") {
+      new Notification("PitLane F1 — 데이터 수집 완료", {
+        body: msg,
+        icon: "/favicon.ico",
+      });
+    }
+  }
+
   return (
     <div className="space-y-3">
+
+      {/* 데이터 수집 완료 토스트 */}
+      {toast && (
+        <div className="flex items-center gap-3 bg-[#22C55E]/10 border border-[#22C55E]/30 rounded-xl px-4 py-3 text-sm animate-in fade-in slide-in-from-top-2 duration-300">
+          <span className="w-2 h-2 rounded-full bg-[#22C55E] shrink-0" />
+          <span className="text-[#22C55E] font-bold">{toast}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="ml-auto text-[#64748B] hover:text-white transition-colors text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         {isActive ? (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E8002D]/10 border border-[#E8002D]/30 rounded-full text-[10px] font-black text-[#E8002D] uppercase tracking-widest">
