@@ -69,7 +69,7 @@ interface Lap       { driver_number: number; lap_number: number; lap_duration: n
 interface Pit       { driver_number: number; lap_number: number; pit_duration: number | null }
 interface Stint     { driver_number: number; compound: string; stint_number: number; tyre_age_at_start: number; lap_start: number; lap_end: number | null }
 interface Weather   { air_temperature: number; track_temperature: number; humidity: number; rainfall: number; wind_speed: number }
-interface SessionInfo { session_key: number; session_type: string }
+interface SessionInfo { session_key: number; session_type: string; session_name: string; is_active: boolean }
 
 async function ofetch<T>(endpoint: string, params: Record<string, string | number>): Promise<T[]> {
   const q = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
@@ -272,6 +272,8 @@ function WeatherPanel({ weather }: { weather: Weather | null }) {
 export default function LiveSessionDashboard() {
   const [sessionKey, setSessionKey] = useState<number | null>(null);
   const [sessionType, setSessionType] = useState<string>("");
+  const [sessionName, setSessionName] = useState<string>("");
+  const [isActive, setIsActive] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const [intervals, setIntervals] = useState<Interval[]>([]);
   const [raceControl, setRaceControl] = useState<RaceCtrl[]>([]);
@@ -279,7 +281,7 @@ export default function LiveSessionDashboard() {
   const [stints, setStints] = useState<Stint[]>([]);
   const [pits, setPits] = useState<Pit[]>([]);
   const [weather, setWeather] = useState<Weather | null>(null);
-  const [ready, setReady] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // 세션 키 조회
   useEffect(() => {
@@ -289,10 +291,12 @@ export default function LiveSessionDashboard() {
         if (data?.session_key) {
           setSessionKey(data.session_key);
           setSessionType(data.session_type ?? "");
-          setReady(true);
+          setSessionName(data.session_name ?? "");
+          setIsActive(data.is_active ?? false);
         }
+        setLoading(false);
       })
-      .catch(() => {});
+      .catch(() => setLoading(false));
   }, []);
 
   // 실시간 데이터 (4초)
@@ -342,18 +346,26 @@ export default function LiveSessionDashboard() {
     };
   }, [sessionKey, fetchRealtime, fetchNearRealtime]);
 
-  if (!ready) return null;
+  if (loading) return null;
+  if (!sessionKey) return null;
 
   const isRace = sessionType === "Race" || sessionType === "Sprint";
+  const displayName = sessionName || sessionType;
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E8002D]/10 border border-[#E8002D]/30 rounded-full text-[10px] font-black text-[#E8002D] uppercase tracking-widest">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#E8002D] animate-pulse" />
-          라이브
-        </span>
-        <span className="text-xs text-[#64748B]">{sessionType} 진행 중</span>
+        {isActive ? (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E8002D]/10 border border-[#E8002D]/30 rounded-full text-[10px] font-black text-[#E8002D] uppercase tracking-widest">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#E8002D] animate-pulse" />
+            라이브
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold text-[#64748B] uppercase tracking-widest">
+            세션 대기
+          </span>
+        )}
+        <span className="text-xs text-[#64748B]">{displayName}{isActive ? " 진행 중" : ""}</span>
       </div>
 
       {/* 실시간 패널 (4초) */}
