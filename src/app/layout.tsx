@@ -14,7 +14,6 @@ const navLinks = [
   { href: "/teams", label: "팀" },
   { href: "/circuits", label: "서킷" },
   { href: "/info", label: "정보" },
-  { href: "/devlog", label: "개발노트" },
 ];
 
 export default function RootLayout({
@@ -112,15 +111,6 @@ export default function RootLayout({
                       매일 7시 갱신
                     </span>
                   </Link>
-                  <a
-                    href="https://github.com/nohdaeyoung/f1_portal"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-sm text-[#64748B] hover:text-white transition-colors"
-                  >
-                    <span className="text-xs">↗</span>
-                    GitHub
-                  </a>
                 </div>
               </div>
             </div>
