@@ -15,6 +15,8 @@ import {
 } from "@/lib/data/live";
 import { getAiDigest, type AiDigest } from "@/lib/api/ai-digest";
 import { getF1News, type NewsArticle } from "@/lib/api/news";
+import CountdownTimer from "@/components/live/CountdownTimer";
+import LiveSessionDashboard from "@/components/live/LiveSessionDashboard";
 
 // AI 다이제스트는 unstable_cache가 캐싱 담당, 페이지 자체는 동적 렌더링
 export const dynamic = "force-dynamic";
@@ -139,9 +141,13 @@ function SessionTimetable({
 function NextRaceHero({ race }: { race: RaceCalendar }) {
   const circuit = getCircuit(race.circuitId);
   const sessions = race.sessions ? getSessionList(race.sessions) : [];
-  const daysUntil = race.sessions
-    ? Math.ceil((new Date(race.sessions.race).getTime() - Date.now()) / 86_400_000)
-    : null;
+  const now = Date.now();
+  const msUntilRace = race.sessions ? new Date(race.sessions.race).getTime() - now : null;
+  const daysUntil = msUntilRace != null ? Math.ceil(msUntilRace / 86_400_000) : null;
+  // 다음 미래 세션 (FP1 포함)
+  const nextSession = sessions.find((s) => new Date(s.time).getTime() > now);
+  const msUntilNext = nextSession ? new Date(nextSession.time).getTime() - now : msUntilRace;
+  const showCountdown = msUntilNext != null && msUntilNext < 86_400_000;
 
   return (
     <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#141420] to-[#1a1a2e] border border-[#2D2D3A]">
@@ -160,12 +166,16 @@ function NextRaceHero({ race }: { race: RaceCalendar }) {
               {circuit?.koreanName} · {race.date}
             </p>
           </div>
-          {daysUntil !== null && daysUntil >= 0 && (
+          {showCountdown && nextSession ? (
+            <CountdownTimer targetIso={nextSession.time} label={`${nextSession.name}까지`} />
+          ) : showCountdown && msUntilRace != null ? (
+            <CountdownTimer targetIso={race.sessions!.race} label="레이스까지" />
+          ) : daysUntil !== null && daysUntil >= 0 ? (
             <div className="text-right shrink-0">
               <span className="text-5xl sm:text-6xl font-black text-[#E8002D]">D-{daysUntil}</span>
               <span className="block text-xs text-[#64748B] mt-1">레이스까지</span>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* Session timetable */}
@@ -629,6 +639,9 @@ export default async function HomePage() {
       ) : (
         nextRace && <NextRaceHero race={nextRace} />
       )}
+
+      {/* ── Live Session Dashboard ────────────────────── */}
+      {weekendInfo.isWeekend && <LiveSessionDashboard />}
 
       {/* ── Championships ─────────────────────────────── */}
       <ChampionshipsSection
