@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { drivers, getDriver, getTeam } from "@/data/f1-data";
 import { fetchDriverSeasonResults, fetchDriverHeadshot, fetchDriverCareerStats } from "@/lib/data/live";
+import { driverSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
 
 export async function generateStaticParams() {
   return drivers.map((d) => ({ id: d.id }));
@@ -11,8 +12,21 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const d = getDriver(id);
-  if (!d) return { title: "Not Found | PitLane" };
-  return { title: `${d.firstName} ${d.lastName} | PitLane` };
+  if (!d) return { title: "Not Found" };
+  const team = getTeam(d.teamId);
+  const title = `${d.firstName} ${d.lastName}`;
+  const description = `${d.firstName} ${d.lastName} — ${team?.name ?? ""} 드라이버. 2026 F1 시즌 성적, 커리어 통계, 드라이버 프로필.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${title} | PitLane`,
+      description,
+      url: `https://f1.324.ing/drivers/${id}`,
+      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    },
+    twitter: { card: "summary_large_image" },
+  };
 }
 
 export default async function DriverDetailPage({
@@ -40,7 +54,25 @@ export default async function DriverDetailPage({
     { label: "통산 포인트", value: driver.points },
   ];
 
+  const ldDriver = driverSchema({
+    id: driver.id,
+    firstName: driver.firstName,
+    lastName: driver.lastName,
+    nationality: driver.nationality,
+    dateOfBirth: driver.dateOfBirth,
+    teamName: team?.name,
+    number: driver.number,
+  });
+  const ldBreadcrumb = breadcrumbSchema([
+    { name: "홈", url: "https://f1.324.ing" },
+    { name: "드라이버", url: "https://f1.324.ing/drivers" },
+    { name: `${driver.firstName} ${driver.lastName}`, url: `https://f1.324.ing/drivers/${driver.id}` },
+  ]);
+
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(ldDriver) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(ldBreadcrumb) }} />
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <Link
         href="/drivers"
@@ -287,5 +319,6 @@ export default async function DriverDetailPage({
         </section>
       )}
     </div>
+    </>
   );
 }

@@ -18,6 +18,7 @@ import { getF1News, type NewsArticle } from "@/lib/api/news";
 import { type OF1Session } from "@/lib/api/openf1";
 import CountdownTimer from "@/components/live/CountdownTimer";
 import LiveSessionDashboard from "@/components/live/LiveSessionDashboard";
+import { websiteSchema, organizationSchema, jsonLdScript } from "@/lib/jsonld";
 
 // AI 다이제스트는 unstable_cache가 캐싱 담당, 페이지 자체는 동적 렌더링
 export const dynamic = "force-dynamic";
@@ -234,6 +235,12 @@ function NextRaceHero({ race }: { race: RaceCalendar }) {
 
         <div className="flex gap-3 flex-wrap">
           <Link
+            href={`/season/race/${race.round}`}
+            className="px-5 py-2.5 bg-white/10 text-white text-sm font-bold rounded-lg hover:bg-white/20 transition-colors"
+          >
+            라운드 페이지 →
+          </Link>
+          <Link
             href={`/circuits/${race.circuitId}`}
             className="px-5 py-2.5 bg-[#E8002D] text-white text-sm font-bold rounded-lg hover:bg-[#cc0028] transition-colors"
           >
@@ -328,6 +335,12 @@ function RaceWeekendHero({ info }: { info: RaceWeekendInfo }) {
         )}
 
         <div className="flex gap-3 flex-wrap">
+          <Link
+            href={`/season/race/${currentRace.round}`}
+            className="px-5 py-2.5 bg-white/10 text-white text-sm font-bold rounded-lg hover:bg-white/20 transition-colors"
+          >
+            라운드 페이지 →
+          </Link>
           <Link
             href={`/circuits/${currentRace.circuitId}`}
             className="px-5 py-2.5 bg-[#E8002D] text-white text-sm font-bold rounded-lg hover:bg-[#cc0028] transition-colors"
@@ -697,6 +710,9 @@ export default async function HomePage() {
   const weekendInfo = getRaceWeekendInfo(nextRace, of1Sessions);
 
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(websiteSchema()) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(organizationSchema()) }} />
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
 
       {/* ── Hero ──────────────────────────────────────── */}
@@ -735,5 +751,6 @@ export default async function HomePage() {
         <SeasonCalendar calendar={calendar} />
       )}
     </div>
+    </>
   );
 }

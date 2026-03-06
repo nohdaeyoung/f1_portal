@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { teams, getTeam, getTeamDrivers } from "@/data/f1-data";
 import { fetchTeamHistory } from "@/lib/data/live";
+import { teamSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
 
 export async function generateStaticParams() {
   return teams.map((t) => ({ id: t.id }));
@@ -10,8 +11,22 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const t = getTeam(id);
-  if (!t) return { title: "Not Found | PitLane" };
-  return { title: `${t.name} | PitLane` };
+  if (!t) return { title: "Not Found" };
+  const drivers = getTeamDrivers(t.id);
+  const driverNames = drivers.map((d) => `${d.firstName} ${d.lastName}`).join(", ");
+  const title = t.name;
+  const description = `${t.name} — 2026 F1 컨스트럭터. 드라이버: ${driverNames}. 팀 역사, 챔피언십 기록, 시즌 성적.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${title} | PitLane`,
+      description,
+      url: `https://f1.324.ing/teams/${id}`,
+      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    },
+    twitter: { card: "summary_large_image" },
+  };
 }
 
 export default async function TeamDetailPage({
@@ -26,7 +41,22 @@ export default async function TeamDetailPage({
   const teamDrivers = getTeamDrivers(team.id);
   const history = await fetchTeamHistory(team.id);
 
+  const ldTeam = teamSchema({
+    id: team.id,
+    name: team.name,
+    championships: team.constructorTitles,
+    driverNames: teamDrivers.map((d) => `${d.firstName} ${d.lastName}`),
+  });
+  const ldBreadcrumb = breadcrumbSchema([
+    { name: "홈", url: "https://f1.324.ing" },
+    { name: "팀", url: "https://f1.324.ing/teams" },
+    { name: team.name, url: `https://f1.324.ing/teams/${team.id}` },
+  ]);
+
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(ldTeam) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(ldBreadcrumb) }} />
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <Link
         href="/teams"
@@ -224,5 +254,6 @@ export default async function TeamDetailPage({
         </section>
       )}
     </div>
+    </>
   );
 }

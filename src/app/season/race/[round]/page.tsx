@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/live";
 import { getCircuit, getDriver, getTeam } from "@/data/f1-data";
 import { calendar as mockCalendar } from "@/data/f1-data";
+import { sportsEventSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
 
 export const revalidate = 300;
 
@@ -25,8 +26,21 @@ export async function generateMetadata({
   const { round } = await params;
   const calendar = await fetchCalendar();
   const race = calendar.find((r) => r.round === parseInt(round));
-  if (!race) return { title: "GP 정보 | PitLane" };
-  return { title: `${race.koreanName} | PitLane` };
+  if (!race) return { title: "GP 정보" };
+  const circuit = getCircuit(race.circuitId);
+  const title = race.koreanName;
+  const description = `2026 F1 Round ${race.round} ${race.koreanName}. ${circuit ? circuit.koreanName + ", " + circuit.country + ". " : ""}레이스 결과, 예선 순위, 세션 일정.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${title} | PitLane`,
+      description,
+      url: `https://f1.324.ing/season/race/${round}`,
+      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    },
+    twitter: { card: "summary_large_image" },
+  };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -341,7 +355,25 @@ export default async function GrandPrixPage({
     ? Math.ceil((new Date(race.sessions.race).getTime() - Date.now()) / 86_400_000)
     : null;
 
+  const ldEvent = sportsEventSchema({
+    round: race.round,
+    name: race.name,
+    koreanName: race.koreanName,
+    date: race.date,
+    circuitName: circuit?.name,
+    circuitCity: circuit?.city,
+    circuitCountry: circuit?.country,
+  });
+  const ldBreadcrumb = breadcrumbSchema([
+    { name: "홈", url: "https://f1.324.ing" },
+    { name: "시즌", url: "https://f1.324.ing/season" },
+    { name: race.koreanName, url: `https://f1.324.ing/season/race/${race.round}` },
+  ]);
+
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(ldEvent) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(ldBreadcrumb) }} />
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
       {/* ── 뒤로가기 ── */}
@@ -429,14 +461,12 @@ export default async function GrandPrixPage({
                 서킷 상세 →
               </Link>
             )}
-            {isCompleted && (
-              <Link
-                href={`/season/race/${race.round}/analysis`}
-                className="px-5 py-2.5 bg-[#A855F7]/10 border border-[#A855F7]/30 text-[#A855F7] text-sm font-bold rounded-lg hover:bg-[#A855F7]/20 transition-colors"
-              >
-                텔레메트리 분석 →
-              </Link>
-            )}
+            <Link
+              href={`/season/race/${race.round}/analysis`}
+              className="px-5 py-2.5 bg-[#A855F7]/10 border border-[#A855F7]/30 text-[#A855F7] text-sm font-bold rounded-lg hover:bg-[#A855F7]/20 transition-colors"
+            >
+              텔레메트리 분석 →
+            </Link>
           </div>
         </div>
       </section>
@@ -485,5 +515,6 @@ export default async function GrandPrixPage({
         </div>
       )}
     </div>
+    </>
   );
 }

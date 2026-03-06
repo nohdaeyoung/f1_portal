@@ -2,9 +2,37 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 
+const SITE_URL = "https://f1.324.ing";
+
 export const metadata: Metadata = {
-  title: "PitLane - F1 종합 포털",
-  description: "드라이버 아카이브, 서킷 가이드, 시즌 트래커, 뉴스 허브를 하나로",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "PitLane — F1 종합 포털",
+    template: "%s | PitLane",
+  },
+  description: "2026 F1 드라이버 아카이브, 서킷 가이드, 시즌 트래커, AI 뉴스 브리핑을 한 곳에서.",
+  keywords: ["F1", "포뮬러원", "Formula 1", "2026 시즌", "F1 드라이버", "F1 서킷", "그랑프리"],
+  authors: [{ name: "PitLane" }],
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: SITE_URL,
+    siteName: "PitLane",
+    title: "PitLane — F1 종합 포털",
+    description: "2026 F1 드라이버 아카이브, 서킷 가이드, 시즌 트래커, AI 뉴스 브리핑을 한 곳에서.",
+    images: [{ url: "/og-default.png", width: 1200, height: 630, alt: "PitLane F1 포털" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PitLane — F1 종합 포털",
+    description: "2026 F1 드라이버 아카이브, 서킷 가이드, 시즌 트래커, AI 뉴스 브리핑을 한 곳에서.",
+    images: ["/og-default.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
 };
 
 const navLinks = [
@@ -13,7 +41,8 @@ const navLinks = [
   { href: "/drivers", label: "드라이버" },
   { href: "/teams", label: "팀" },
   { href: "/circuits", label: "서킷" },
-  { href: "/info", label: "정보" },
+  { href: "/history", label: "역사" },
+  { href: "/info", label: "규정" },
 ];
 
 export default function RootLayout({
@@ -82,7 +111,8 @@ export default function RootLayout({
                     { href: "/drivers", label: "드라이버" },
                     { href: "/teams", label: "팀" },
                     { href: "/circuits", label: "서킷" },
-                    { href: "/info", label: "정보 허브" },
+                    { href: "/history", label: "역사" },
+                    { href: "/info", label: "레귤레이션" },
                   ].map((link) => (
                     <Link
                       key={link.href}

@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-03-05T14:21:30.556Z",
+  "timestamp": "2026-03-06T02:28:23.259Z",
   "reason": "compaction",
   "status": {
     "version": "2.0",
-    "lastUpdated": "2026-03-05T14:16:47.535Z",
+    "lastUpdated": "2026-03-06T02:24:25.088Z",
     "activeFeatures": [
       "data",
       "api",
@@ -14,7 +14,15 @@
       "revalidate-digest",
       "info",
       "regulations",
-      "regs"
+      "regs",
+      "[round]",
+      "devlog",
+      "test-digest",
+      "warm-digest",
+      "session",
+      "live",
+      "revalidate-digest-noon",
+      "[session]"
     ],
     "primaryFeature": "data",
     "features": {
@@ -27,9 +35,9 @@
         "documents": {},
         "timestamps": {
           "started": "2026-03-04T21:03:24.631Z",
-          "lastUpdated": "2026-03-05T13:05:26.121Z"
+          "lastUpdated": "2026-03-05T21:57:07.547Z"
         },
-        "lastFile": "/Volumes/Dev/f1/src/data/regulations-2026.ts"
+        "lastFile": "/Volumes/Dev/f1/src/data/devlog.ts"
       },
       "api": {
         "phase": "do",
@@ -40,7 +48,7 @@
         "documents": {},
         "timestamps": {
           "started": "2026-03-04T21:11:14.348Z",
-          "lastUpdated": "2026-03-05T01:27:40.049Z"
+          "lastUpdated": "2026-03-06T01:25:02.543Z"
         },
         "lastFile": "/Volumes/Dev/f1/src/lib/api/ai-digest.ts"
       },
@@ -66,7 +74,7 @@
         "documents": {},
         "timestamps": {
           "started": "2026-03-04T21:20:23.159Z",
-          "lastUpdated": "2026-03-05T01:37:55.254Z"
+          "lastUpdated": "2026-03-05T23:45:56.916Z"
         },
         "lastFile": "/Volumes/Dev/f1/src/app/news/page.tsx"
       },
@@ -79,7 +87,7 @@
         "documents": {},
         "timestamps": {
           "started": "2026-03-04T21:20:51.777Z",
-          "lastUpdated": "2026-03-05T13:03:42.308Z"
+          "lastUpdated": "2026-03-06T02:24:25.087Z"
         },
         "lastFile": "/Volumes/Dev/f1/src/app/layout.tsx"
       },
@@ -92,7 +100,7 @@
         "documents": {},
         "timestamps": {
           "started": "2026-03-04T23:27:37.687Z",
-          "lastUpdated": "2026-03-04T23:47:43.630Z"
+          "lastUpdated": "2026-03-06T01:45:31.022Z"
         },
         "lastFile": "/Volumes/Dev/f1/src/app/season/RaceWeekendLive.tsx"
       },
@@ -105,7 +113,7 @@
         "documents": {},
         "timestamps": {
           "started": "2026-03-05T01:37:37.099Z",
-          "lastUpdated": "2026-03-05T01:37:37.099Z"
+          "lastUpdated": "2026-03-06T00:22:45.227Z"
         },
         "lastFile": "/Volumes/Dev/f1/src/app/api/revalidate-digest/route.ts"
       },
@@ -118,7 +126,7 @@
         "documents": {},
         "timestamps": {
           "started": "2026-03-05T13:06:07.803Z",
-          "lastUpdated": "2026-03-05T13:27:48.606Z"
+          "lastUpdated": "2026-03-05T21:22:41.941Z"
         },
         "lastFile": "/Volumes/Dev/f1/src/app/info/page.tsx"
       },
@@ -144,9 +152,113 @@
         "documents": {},
         "timestamps": {
           "started": "2026-03-05T13:15:16.392Z",
-          "lastUpdated": "2026-03-05T14:16:47.535Z"
+          "lastUpdated": "2026-03-05T21:13:08.211Z"
         },
-        "lastFile": "/Volumes/Dev/f1/src/data/regs/section-b.ts"
+        "lastFile": "/Volumes/Dev/f1/src/data/regs/section-f.ts"
+      },
+      "[round]": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-05T21:41:26.866Z",
+          "lastUpdated": "2026-03-06T02:10:02.218Z"
+        },
+        "lastFile": "/Volumes/Dev/f1/src/app/season/race/[round]/page.tsx"
+      },
+      "devlog": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-05T21:58:14.500Z",
+          "lastUpdated": "2026-03-05T21:58:55.592Z"
+        },
+        "lastFile": "/Volumes/Dev/f1/src/app/api/cron/devlog/route.ts"
+      },
+      "test-digest": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-05T22:21:49.289Z",
+          "lastUpdated": "2026-03-05T23:38:09.494Z"
+        },
+        "lastFile": "/Volumes/Dev/f1/src/app/api/test-digest/route.ts"
+      },
+      "warm-digest": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-06T00:19:28.743Z",
+          "lastUpdated": "2026-03-06T01:32:22.267Z"
+        },
+        "lastFile": "/Volumes/Dev/f1/src/app/api/warm-digest/route.ts"
+      },
+      "session": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-06T01:21:44.211Z",
+          "lastUpdated": "2026-03-06T01:35:30.886Z"
+        },
+        "lastFile": "/Volumes/Dev/f1/src/app/api/live/session/route.ts"
+      },
+      "live": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-06T01:21:58.696Z",
+          "lastUpdated": "2026-03-06T02:23:35.353Z"
+        },
+        "lastFile": "/Volumes/Dev/f1/src/components/live/LiveSessionDashboard.tsx"
+      },
+      "revalidate-digest-noon": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-06T01:46:15.482Z",
+          "lastUpdated": "2026-03-06T01:46:15.482Z"
+        },
+        "lastFile": "/Volumes/Dev/f1/src/app/api/revalidate-digest-noon/route.ts"
+      },
+      "[session]": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-06T01:52:21.536Z",
+          "lastUpdated": "2026-03-06T02:08:39.331Z"
+        },
+        "lastFile": "/Volumes/Dev/f1/src/app/season/race/[round]/[session]/page.tsx"
       }
     },
     "pipeline": {
@@ -157,7 +269,7 @@
     "session": {
       "startedAt": "2026-03-04T20:53:29.825Z",
       "onboardingCompleted": false,
-      "lastActivity": "2026-03-05T14:16:47.535Z"
+      "lastActivity": "2026-03-06T02:24:25.088Z"
     },
     "history": [
       {
@@ -1411,6 +1523,492 @@
       {
         "timestamp": "2026-03-05T14:16:47.535Z",
         "feature": "regs",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T14:25:48.969Z",
+        "feature": "regs",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T14:31:21.709Z",
+        "feature": "regs",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T14:35:57.592Z",
+        "feature": "regs",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T14:58:38.097Z",
+        "feature": "regs",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T20:56:06.578Z",
+        "feature": "regs",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:13:08.211Z",
+        "feature": "regs",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:21:32.558Z",
+        "feature": "data",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:22:41.941Z",
+        "feature": "info",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:35:08.303Z",
+        "feature": "data",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:35:29.535Z",
+        "feature": "data",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:36:30.600Z",
+        "feature": "data",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:36:43.780Z",
+        "feature": "data",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:37:29.474Z",
+        "feature": "data",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:41:26.866Z",
+        "feature": "[round]",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:45:41.116Z",
+        "feature": "season",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:51:40.759Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:56:03.770Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:57:07.547Z",
+        "feature": "data",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:58:14.500Z",
+        "feature": "devlog",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:58:55.592Z",
+        "feature": "devlog",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:59:46.062Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T21:59:54.905Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T22:06:32.778Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T22:06:53.173Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T22:07:04.142Z",
+        "feature": "revalidate-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T22:07:34.752Z",
+        "feature": "revalidate-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T22:09:15.404Z",
+        "feature": "revalidate-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T22:21:49.289Z",
+        "feature": "test-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T23:38:09.494Z",
+        "feature": "test-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T23:40:31.209Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T23:45:56.916Z",
+        "feature": "news",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T23:46:21.664Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T23:48:56.322Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T23:53:47.265Z",
+        "feature": "revalidate-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-05T23:58:05.620Z",
+        "feature": "revalidate-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T00:04:44.433Z",
+        "feature": "revalidate-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T00:19:28.743Z",
+        "feature": "warm-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T00:22:45.227Z",
+        "feature": "revalidate-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:09:09.907Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:17:17.064Z",
+        "feature": "warm-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:17:23.258Z",
+        "feature": "warm-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:19:42.627Z",
+        "feature": "warm-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:21:44.211Z",
+        "feature": "session",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:21:58.696Z",
+        "feature": "live",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:22:23.163Z",
+        "feature": "warm-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:23:19.511Z",
+        "feature": "live",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:23:36.252Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:23:46.294Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:23:54.802Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:24:02.059Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:24:07.154Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:25:02.543Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:32:22.267Z",
+        "feature": "warm-digest",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:34:14.367Z",
+        "feature": "session",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:35:30.886Z",
+        "feature": "session",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:41:27.808Z",
+        "feature": "season",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:42:44.680Z",
+        "feature": "season",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:44:48.884Z",
+        "feature": "season",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:45:14.997Z",
+        "feature": "season",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:45:31.022Z",
+        "feature": "season",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:46:15.482Z",
+        "feature": "revalidate-digest-noon",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:47:16.968Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:47:35.182Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:47:49.293Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:48:07.256Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:48:23.791Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:48:34.206Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:49:05.012Z",
+        "feature": "live",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T01:52:21.536Z",
+        "feature": "[session]",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:08:16.749Z",
+        "feature": "[session]",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:08:32.611Z",
+        "feature": "[session]",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:08:39.331Z",
+        "feature": "[session]",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:09:02.796Z",
+        "feature": "[round]",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:10:02.218Z",
+        "feature": "[round]",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:22:44.043Z",
+        "feature": "live",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:23:04.776Z",
+        "feature": "live",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:23:13.900Z",
+        "feature": "live",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:23:24.125Z",
+        "feature": "live",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:23:35.353Z",
+        "feature": "live",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:23:58.219Z",
+        "feature": "f1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-06T02:24:25.087Z",
+        "feature": "f1",
         "phase": "do",
         "action": "updated"
       }

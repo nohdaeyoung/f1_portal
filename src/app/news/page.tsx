@@ -2,8 +2,15 @@ import { getDailyDigest, type NewsArticle } from "@/lib/api/news";
 import { getAiDigest, type AiDigest } from "@/lib/api/ai-digest";
 
 export const metadata = {
-  title: "F1 데일리 다이제스트 | PitLane",
-  description: "6개 매체의 당일 F1 기사를 토픽별로 정리한 일일 보고서",
+  title: "F1 뉴스 & AI 브리핑",
+  description: "Autosport, Motorsport.com 등 6개 매체의 F1 최신 뉴스와 Claude AI가 매일 정리하는 토픽별 브리핑.",
+  openGraph: {
+    title: "F1 뉴스 & AI 브리핑 | PitLane",
+    description: "Autosport, Motorsport.com 등 6개 매체의 F1 최신 뉴스와 Claude AI가 매일 정리하는 토픽별 브리핑.",
+    url: "https://f1.324.ing/news",
+    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 // force-dynamic: 빌드 시 Claude API 호출 실패 방지 → 서버 렌더링 + unstable_cache가 데이터 캐싱 담당

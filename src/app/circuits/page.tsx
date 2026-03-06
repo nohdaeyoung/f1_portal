@@ -2,8 +2,15 @@ import Link from "next/link";
 import { circuits } from "@/data/f1-data";
 
 export const metadata = {
-  title: "서킷 가이드 | PitLane",
-  description: "2026 시즌 24개 그랑프리 서킷",
+  title: "F1 서킷 가이드",
+  description: "2026 시즌 F1 그랑프리가 열리는 24개 서킷의 트랙 정보, 랩 레코드, 특징을 확인하세요.",
+  openGraph: {
+    title: "F1 서킷 가이드 | PitLane",
+    description: "2026 시즌 F1 그랑프리가 열리는 24개 서킷의 트랙 정보, 랩 레코드, 특징을 확인하세요.",
+    url: "https://f1.324.ing/circuits",
+    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function CircuitsPage() {

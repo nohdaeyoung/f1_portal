@@ -3,8 +3,15 @@ import { changes2026 } from "@/data/regulations-2026";
 import { allSections } from "@/data/regs";
 
 export const metadata = {
-  title: "F1 정보 허브 | PitLane",
-  description: "2026 F1 규정, 기술 가이드, F1 입문 정보를 한곳에서",
+  title: "F1 레귤레이션",
+  description: "2026 F1 규정 변경사항, 기술 가이드, DRS·ERS·타이어 등 F1 입문 정보를 한 곳에서 확인하세요.",
+  openGraph: {
+    title: "F1 레귤레이션 | PitLane",
+    description: "2026 F1 규정 변경사항, 기술 가이드, DRS·ERS·타이어 등 F1 입문 정보를 한 곳에서 확인하세요.",
+    url: "https://f1.324.ing/info",
+    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 const impactLabel = { high: "핵심 변경", medium: "변경", low: "소폭 변경" };

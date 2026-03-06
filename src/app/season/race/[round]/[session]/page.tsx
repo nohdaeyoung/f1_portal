@@ -98,8 +98,20 @@ export async function generateMetadata({
   const calendar = await fetchCalendar();
   const race = calendar.find((r) => r.round === parseInt(round));
   const cfg = SESSION_CONFIG[session];
-  if (!race || !cfg) return { title: "세션 결과 | PitLane" };
-  return { title: `${race.koreanName} ${cfg.name} | PitLane` };
+  if (!race || !cfg) return { title: "세션 결과" };
+  const title = `${race.koreanName} ${cfg.name}`;
+  const description = `2026 F1 Round ${race.round} ${race.koreanName} ${cfg.name} 결과 — 순위, 베스트 랩, 타이어 전략, 레이스 컨트롤 로그.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${title} | PitLane`,
+      description,
+      url: `https://f1.324.ing/season/race/${round}/${session}`,
+      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    },
+    twitter: { card: "summary_large_image" },
+  };
 }
 
 // ─── Page ─────────────────────────────────────────────────────

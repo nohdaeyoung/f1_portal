@@ -8,8 +8,15 @@ import {
 import { RaceWeekendLive } from "./RaceWeekendLive";
 
 export const metadata = {
-  title: "시즌 트래커 | PitLane",
-  description: "2026 F1 시즌 순위, 캘린더, 결과",
+  title: "2026 시즌 트래커",
+  description: "2026 F1 시즌 드라이버 챔피언십 순위, 컨스트럭터 순위, 레이스 캘린더 및 결과를 실시간으로 확인하세요.",
+  openGraph: {
+    title: "2026 F1 시즌 트래커 | PitLane",
+    description: "2026 F1 시즌 드라이버 챔피언십 순위, 컨스트럭터 순위, 레이스 캘린더 및 결과를 실시간으로 확인하세요.",
+    url: "https://f1.324.ing/season",
+    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 function DriverStandingsTable({ standings }: { standings: Standing[] }) {

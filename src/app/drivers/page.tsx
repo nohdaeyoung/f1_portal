@@ -2,8 +2,15 @@ import Link from "next/link";
 import { drivers } from "@/data/f1-data";
 
 export const metadata = {
-  title: "드라이버 아카이브 | PitLane",
-  description: "2026 시즌 현역 F1 드라이버 22명",
+  title: "F1 드라이버 아카이브",
+  description: "2026 시즌 현역 F1 드라이버 22명의 프로필, 통계, 시즌 성적을 한눈에 확인하세요.",
+  openGraph: {
+    title: "F1 드라이버 아카이브 | PitLane",
+    description: "2026 시즌 현역 F1 드라이버 22명의 프로필, 통계, 시즌 성적을 한눈에 확인하세요.",
+    url: "https://f1.324.ing/drivers",
+    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function DriversPage() {

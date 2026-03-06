@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { circuits, getCircuit } from "@/data/f1-data";
 import { fetchCircuitWinners } from "@/lib/data/live";
 import { TrackMap } from "./TrackMap";
+import { circuitSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
 
 export async function generateStaticParams() {
   return circuits.map((c) => ({ id: c.id }));
@@ -11,8 +12,20 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const c = getCircuit(id);
-  if (!c) return { title: "Not Found | PitLane" };
-  return { title: `${c.koreanName} | PitLane` };
+  if (!c) return { title: "Not Found" };
+  const title = c.koreanName;
+  const description = `${c.koreanName} — ${c.country}. 트랙 길이 ${c.length}km, ${c.turns}개 코너. 랩 레코드, 서킷 특징, 역대 우승자 정보.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${title} | PitLane`,
+      description,
+      url: `https://f1.324.ing/circuits/${id}`,
+      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    },
+    twitter: { card: "summary_large_image" },
+  };
 }
 
 export default async function CircuitDetailPage({
@@ -34,7 +47,26 @@ export default async function CircuitDetailPage({
     { l: "서킷 유형", v: circuit.type === "street" ? "시가지" : "상설" },
   ];
 
+  const ldCircuit = circuitSchema({
+    id: circuit.id,
+    name: circuit.name,
+    koreanName: circuit.koreanName,
+    city: circuit.city,
+    country: circuit.country,
+    length: String(circuit.length),
+    turns: circuit.turns,
+    coordinates: circuit.coordinates,
+  });
+  const ldBreadcrumb = breadcrumbSchema([
+    { name: "홈", url: "https://f1.324.ing" },
+    { name: "서킷", url: "https://f1.324.ing/circuits" },
+    { name: circuit.koreanName, url: `https://f1.324.ing/circuits/${circuit.id}` },
+  ]);
+
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(ldCircuit) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(ldBreadcrumb) }} />
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <Link
         href="/circuits"
@@ -170,5 +202,6 @@ export default async function CircuitDetailPage({
         </section>
       )}
     </div>
+    </>
   );
 }
