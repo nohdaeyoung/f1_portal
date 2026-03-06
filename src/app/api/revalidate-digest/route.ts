@@ -27,11 +27,19 @@ export async function GET(request: Request) {
 
   // 2. 새 다이제스트 생성 (캐시 프리워밍 — 사용자가 느린 첫 로딩을 겪지 않도록)
   let digestGenerated = false;
+  let debugInfo: Record<string, unknown> = {};
   try {
     const digest = await getAiDigest();
+    debugInfo = {
+      digestNull: digest === null,
+      headline: digest?.headline?.slice(0, 50),
+      articleCount: digest?.articleCount,
+      generatedAt: digest?.generatedAt,
+    };
     digestGenerated = !!(digest && digest.headline !== "새 레귤레이션의 판도라 상자 열렸다 — 맥라렌·레드불·페라리 3파전 윤곽");
   } catch (e) {
     console.error("[revalidate-digest] 다이제스트 생성 실패:", e);
+    debugInfo = { error: String(e) };
   }
 
   // 3. 페이지 ISR 갱신
@@ -41,6 +49,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     revalidated: true,
     digestGenerated,
+    debugInfo,
     timestamp: new Date().toISOString(),
     message: digestGenerated ? "AI 다이제스트 갱신 완료" : "다이제스트 생성 실패 (데모 사용)",
   });
