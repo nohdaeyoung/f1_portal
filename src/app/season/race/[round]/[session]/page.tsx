@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { calendar as mockCalendar } from "@/data/f1-data";
 import { fetchCalendar } from "@/lib/data/live";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 // ─── Session config ────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ async function of1get<T>(path: string, params: Record<string, string | number> =
   const url = new URL(`${OF1}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
   try {
-    const r = await fetch(url.toString(), { next: { revalidate: 300 } });
+    const r = await fetch(url.toString(), { next: { revalidate: 60 } });
     if (!r.ok) return [];
     const data = await r.json();
     return Array.isArray(data) ? data : [];
@@ -344,7 +344,9 @@ export default async function SessionPage({
                         <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S1</th>
                         <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S2</th>
                         <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase font-mono hidden lg:table-cell">S3</th>
-                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden xl:table-cell">탑스피드</th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden xl:table-cell">IS1 <span className="normal-case text-[10px]">km/h</span></th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden xl:table-cell">IS2 <span className="normal-case text-[10px]">km/h</span></th>
+                        <th className="text-right px-3 py-3 text-xs text-[#64748B] uppercase hidden xl:table-cell">탑스피드 <span className="normal-case text-[10px]">km/h</span></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -442,9 +444,17 @@ export default async function SessionPage({
                             <td className="px-3 py-3 text-right font-mono text-[11px] text-[#64748B] hidden lg:table-cell">
                               {fastLap?.duration_sector_3?.toFixed(3) ?? "—"}
                             </td>
+                            {/* IS1 중간점1 속도 */}
+                            <td className="px-3 py-3 text-right text-[11px] text-[#64748B] hidden xl:table-cell">
+                              {fastLap?.i1_speed != null ? `${fastLap.i1_speed}` : "—"}
+                            </td>
+                            {/* IS2 중간점2 속도 */}
+                            <td className="px-3 py-3 text-right text-[11px] text-[#64748B] hidden xl:table-cell">
+                              {fastLap?.i2_speed != null ? `${fastLap.i2_speed}` : "—"}
+                            </td>
                             {/* 탑스피드 */}
                             <td className="px-3 py-3 text-right text-[11px] text-[#64748B] hidden xl:table-cell">
-                              {fastLap?.st_speed != null ? `${fastLap.st_speed} km/h` : "—"}
+                              {fastLap?.st_speed != null ? `${fastLap.st_speed}` : "—"}
                             </td>
                           </tr>
                         );
