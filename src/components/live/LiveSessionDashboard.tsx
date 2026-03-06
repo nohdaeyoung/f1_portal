@@ -69,7 +69,7 @@ interface Lap       { driver_number: number; lap_number: number; lap_duration: n
 interface Pit       { driver_number: number; lap_number: number; pit_duration: number | null }
 interface Stint     { driver_number: number; compound: string; stint_number: number; tyre_age_at_start: number; lap_start: number; lap_end: number | null }
 interface Weather   { air_temperature: number; track_temperature: number; humidity: number; rainfall: number; wind_speed: number }
-interface SessionInfo { session_key: number; session_type: string; session_name: string; is_active: boolean }
+interface SessionInfo { session_key: number; session_type: string; session_name: string; date_end: string; is_active: boolean }
 
 async function ofetch<T>(endpoint: string, params: Record<string, string | number>): Promise<T[]> {
   const q = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
@@ -269,10 +269,38 @@ function WeatherPanel({ weather }: { weather: Weather | null }) {
 
 // ─── Main Component ────────────────────────────────────────────
 
+function useSessionCountdown(dateEnd: string | null, isActive: boolean) {
+  const [remaining, setRemaining] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isActive || !dateEnd) { setRemaining(null); return; }
+    const endMs = new Date(dateEnd).getTime();
+    const tick = () => {
+      const diff = endMs - Date.now();
+      setRemaining(diff > 0 ? diff : 0);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [dateEnd, isActive]);
+
+  return remaining;
+}
+
+function fmtRemaining(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function LiveSessionDashboard() {
   const [sessionKey, setSessionKey] = useState<number | null>(null);
   const [sessionType, setSessionType] = useState<string>("");
   const [sessionName, setSessionName] = useState<string>("");
+  const [sessionDateEnd, setSessionDateEnd] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const [intervals, setIntervals] = useState<Interval[]>([]);
@@ -304,6 +332,7 @@ export default function LiveSessionDashboard() {
           setSessionKey(data.session_key);
           setSessionType(data.session_type ?? "");
           setSessionName(data.session_name ?? "");
+          setSessionDateEnd(data.date_end ?? null);
           setIsActive(data.is_active ?? false);
         }
         setLoading(false);
@@ -357,6 +386,8 @@ export default function LiveSessionDashboard() {
       clearInterval(nearId);
     };
   }, [sessionKey, fetchRealtime, fetchNearRealtime]);
+
+  const remaining = useSessionCountdown(sessionDateEnd, isActive);
 
   if (loading) return null;
   if (!sessionKey) return null;
@@ -415,6 +446,11 @@ export default function LiveSessionDashboard() {
           {displayName}
           {isActive ? " 진행 중" : hasData ? " 결과" : ""}
         </span>
+        {isActive && remaining != null && remaining > 0 && (
+          <span className="ml-auto text-xs font-mono tabular-nums text-[#94A3B8]">
+            종료까지 <span className="text-white font-bold">{fmtRemaining(remaining)}</span>
+          </span>
+        )}
       </div>
 
       {/* 실시간 패널 (4초 / 세션 후 전체 공개) */}

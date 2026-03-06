@@ -15,6 +15,7 @@ import {
 } from "@/lib/data/live";
 import { getAiDigest, type AiDigest } from "@/lib/api/ai-digest";
 import { getF1News, type NewsArticle } from "@/lib/api/news";
+import { type OF1Session } from "@/lib/api/openf1";
 import CountdownTimer from "@/components/live/CountdownTimer";
 import LiveSessionDashboard from "@/components/live/LiveSessionDashboard";
 
@@ -67,10 +68,6 @@ function getSessionList(s: SessionSchedule): { key: string; name: string; time: 
   return list;
 }
 
-const SESSION_DURATIONS: Record<string, number> = {
-  fp1: 100, fp2: 100, fp3: 100, sq: 95, sprint: 75, qualifying: 100, race: 180,
-};
-
 interface RaceWeekendInfo {
   isWeekend: boolean;
   nextSession: { key: string; name: string; time: string } | null;
@@ -78,7 +75,7 @@ interface RaceWeekendInfo {
   currentRace: RaceCalendar | null;
 }
 
-function getRaceWeekendInfo(nextRace: RaceCalendar | undefined): RaceWeekendInfo {
+function getRaceWeekendInfo(nextRace: RaceCalendar | undefined, of1Sessions: OF1Session[]): RaceWeekendInfo {
   const empty: RaceWeekendInfo = { isWeekend: false, nextSession: null, liveSession: null, currentRace: null };
   if (!nextRace?.sessions) return empty;
 
@@ -90,11 +87,20 @@ function getRaceWeekendInfo(nextRace: RaceCalendar | undefined): RaceWeekendInfo
 
   if (now < firstTime || now > raceEndTime) return empty;
 
-  const liveSession = sessions.find((sess) => {
-    const start = new Date(sess.time).getTime();
-    const dur = SESSION_DURATIONS[sess.key] ?? 120;
-    return now >= start && now <= start + dur * 60_000;
-  }) ?? null;
+  // OpenF1 실제 date_end 기준 live 감지
+  const activeOf1 = of1Sessions.find((s) => {
+    const start = new Date(s.date_start).getTime();
+    const end = new Date(s.date_end).getTime();
+    return start <= now && now <= end;
+  });
+
+  let liveSession: { key: string; name: string; time: string } | null = null;
+  if (activeOf1) {
+    const of1Start = new Date(activeOf1.date_start).getTime();
+    liveSession = sessions.find(
+      (sess) => Math.abs(new Date(sess.time).getTime() - of1Start) < 4 * 3_600_000
+    ) ?? null;
+  }
 
   const nextSession = sessions.find((sess) => new Date(sess.time).getTime() > now) ?? null;
   return { isWeekend: true, nextSession, liveSession, currentRace: nextRace };
@@ -660,18 +666,22 @@ function SeasonCalendar({ calendar }: { calendar: RaceCalendar[] }) {
 // ─── Page ───────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const [driverStandings, constructorStandings, calendar, aiDigest, newsArticles] =
+  const year = new Date().getFullYear();
+  const [driverStandings, constructorStandings, calendar, aiDigest, newsArticles, of1Sessions] =
     await Promise.all([
       fetchDriverStandings(),
       fetchConstructorStandings(),
       fetchCalendar(),
       getAiDigest(),
       getF1News(8),
+      fetch(`https://api.openf1.org/v1/sessions?year=${year}`, { cache: "no-store" })
+        .then((r) => (r.ok ? (r.json() as Promise<OF1Session[]>) : []))
+        .catch(() => [] as OF1Session[]),
     ]);
 
   const nextRace = calendar.find((r) => r.status === "next");
   const completed = calendar.filter((r) => r.status === "completed");
-  const weekendInfo = getRaceWeekendInfo(nextRace);
+  const weekendInfo = getRaceWeekendInfo(nextRace, of1Sessions);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">

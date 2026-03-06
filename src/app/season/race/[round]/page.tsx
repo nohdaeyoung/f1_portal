@@ -324,7 +324,7 @@ export default async function GrandPrixPage({
   if (!race) notFound();
 
   const circuit = getCircuit(race.circuitId);
-  const isCompleted = race.status === "completed";
+  const isCompleted = race.status === "completed" || new Date(race.date).getTime() < Date.now();
   const isUpcoming = race.status === "upcoming" || race.status === "next";
 
   // 완료된 레이스는 결과 데이터 병렬 로드
@@ -427,6 +427,14 @@ export default async function GrandPrixPage({
                 className="px-5 py-2.5 bg-white/10 text-white text-sm font-bold rounded-lg hover:bg-white/20 transition-colors"
               >
                 서킷 상세 →
+              </Link>
+            )}
+            {isCompleted && (
+              <Link
+                href={`/season/race/${race.round}/analysis`}
+                className="px-5 py-2.5 bg-[#A855F7]/10 border border-[#A855F7]/30 text-[#A855F7] text-sm font-bold rounded-lg hover:bg-[#A855F7]/20 transition-colors"
+              >
+                텔레메트리 분석 →
               </Link>
             )}
           </div>
