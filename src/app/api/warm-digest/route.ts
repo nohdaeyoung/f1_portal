@@ -1,5 +1,10 @@
 /**
- * 캐시 프리워밍 엔드포인트 (getAiDigest 직접 호출)
+ * 캐시 프리워밍 엔드포인트
+ * revalidate-digest 크론이 revalidateTag 후 이 엔드포인트를 HTTP 호출해
+ * Claude API로 새 다이제스트를 생성하고 unstable_cache에 저장한다.
+ *
+ * Route Handler에서 revalidateTag는 다음 요청에서 적용되므로
+ * 별도 요청으로 분리하는 것이 필수적이다.
  */
 import { NextResponse } from "next/server";
 import { getAiDigest } from "@/lib/api/ai-digest";
@@ -7,22 +12,15 @@ import { getAiDigest } from "@/lib/api/ai-digest";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const DEMO_GENERATED_AT = new Date("2026-03-05T07:00:00+09:00").toISOString();
-
 export async function GET() {
-  const start = Date.now();
   try {
     const digest = await getAiDigest();
-    const isDemo = digest?.generatedAt === DEMO_GENERATED_AT;
     return NextResponse.json({
-      ok: !isDemo,
-      isDemo,
-      headline: digest?.headline?.slice(0, 80),
-      articleCount: digest?.articleCount,
+      ok: true,
       generatedAt: digest?.generatedAt,
-      elapsed: `${Date.now() - start}ms`,
+      articleCount: digest?.articleCount,
     });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: String(e), elapsed: `${Date.now() - start}ms` }, { status: 500 });
+    return NextResponse.json({ ok: false, error: String(e) }, { status: 500 });
   }
 }
