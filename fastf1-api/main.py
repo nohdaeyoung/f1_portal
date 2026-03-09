@@ -832,6 +832,10 @@ async def get_replay_frames(
     Returns 202 {"status":"processing"} while computing in background,
     returns full data once ready. Poll until non-202 response.
     """
+    # Normalize session name: "Race" → "R", "Sprint" → "S"
+    _SESSION_MAP = {"Race": "R", "Sprint": "S", "Qualifying": "Q",
+                    "Practice 1": "FP1", "Practice 2": "FP2", "Practice 3": "FP3"}
+    session = _SESSION_MAP.get(session, session)
     key = _replay_job_key(year, gp, session, fps)
 
     # 1. In-memory cache (fastest — survives within the same process)
