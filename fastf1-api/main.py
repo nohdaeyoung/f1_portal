@@ -5,7 +5,7 @@ Serves F1 telemetry and session data to the Next.js frontend.
 
 from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
@@ -98,20 +98,21 @@ def _r2_load(key: str):
         return None
 
 
-def _r2_stream(key: str):
-    """Stream gzip bytes directly from R2 — avoids 155MB decompression in RAM."""
+def _r2_presigned_url(key: str, expires: int = 3600) -> str | None:
+    """Generate a presigned GET URL for R2 — client downloads directly from CDN."""
     r2 = _get_r2()
     if not r2:
         return None
     try:
-        resp = r2.get_object(Bucket=R2_BUCKET, Key=key)
-        body = resp["Body"].read()  # 5MB only; never decompressed
-        logger.info(f"[r2] Stream hit: {key} ({len(body)//1024}KB)")
-        return body
+        url = r2.generate_presigned_url(
+            "get_object",
+            Params={"Bucket": R2_BUCKET, "Key": key},
+            ExpiresIn=expires,
+        )
+        logger.info(f"[r2] Presigned URL: {key}")
+        return url
     except Exception as e:
-        code = e.response["Error"]["Code"] if hasattr(e, "response") else ""
-        if code != "NoSuchKey":
-            logger.warning(f"[r2] Stream error {key}: {e}")
+        logger.warning(f"[r2] Presigned URL error {key}: {e}")
         return None
 
 
@@ -871,15 +872,11 @@ async def get_replay_frames(
         replay_cache[key] = {"status": "done", "result": cached, "error": None}
         return cached
 
-    # 3. Cloudflare R2 cache — stream raw gzip to avoid 155MB decompression
+    # 3. Cloudflare R2 cache — redirect client directly to CDN (no Railway bandwidth)
     r2_key = _r2_replay_key(year, gp, session, fps)
-    gz_bytes = _r2_stream(r2_key)
-    if gz_bytes:
-        return StreamingResponse(
-            iter([gz_bytes]),
-            media_type="application/json",
-            headers={"Content-Encoding": "gzip"},
-        )
+    presigned = _r2_presigned_url(r2_key)
+    if presigned:
+        return RedirectResponse(url=presigned, status_code=307)
 
     # 4. Firebase Storage cache (optional fallback)
     cached = _load_from_firebase(year, gp, session, fps)
