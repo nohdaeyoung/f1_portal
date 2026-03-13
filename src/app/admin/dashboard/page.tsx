@@ -39,7 +39,8 @@ async function readConfig() {
 
 export default async function AdminDashboardPage() {
   const cookieStore = await cookies();
-  if (cookieStore.get("pitlane_admin")?.value !== "authenticated") {
+  const cookieSecret = process.env.ADMIN_COOKIE_SECRET;
+  if (!cookieSecret || cookieStore.get("pitlane_admin")?.value !== cookieSecret) {
     redirect("/admin");
   }
 
