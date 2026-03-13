@@ -55,7 +55,7 @@ export default function AdminLoginPage() {
         if (data.error === "Unauthorized email") {
           setError("관리자 Google 계정이 아닙니다.");
         } else {
-          setError("Google 로그인에 실패했습니다.");
+          setError(`서버 오류 (${res.status}): ${data.error || "unknown"}`);
         }
       }
     } catch (e: unknown) {
