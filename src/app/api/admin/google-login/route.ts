@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
     const decoded = await getAuth().verifyIdToken(idToken);
     if (decoded.email !== allowedEmail) {
-      return NextResponse.json({ error: "Unauthorized email" }, { status: 403 });
+      return NextResponse.json({ error: "Unauthorized email", received: decoded.email }, { status: 403 });
     }
 
     const res = NextResponse.json({ ok: true, email: decoded.email });

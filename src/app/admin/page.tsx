@@ -53,7 +53,7 @@ export default function AdminLoginPage() {
       } else {
         const data = await res.json();
         if (data.error === "Unauthorized email") {
-          setError("관리자 Google 계정이 아닙니다.");
+          setError(`관리자 Google 계정이 아닙니다. (로그인 계정: ${data.received || "unknown"})`);
         } else {
           setError(`서버 오류 (${res.status}): ${data.error || "unknown"}`);
         }
