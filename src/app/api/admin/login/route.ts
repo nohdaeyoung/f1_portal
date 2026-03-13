@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
 const COOKIE_NAME = "pitlane_admin";
 
@@ -18,8 +17,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
-  const cookieStore = await cookies();
-  cookieStore.set(COOKIE_NAME, cookieSecret, {
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(COOKIE_NAME, cookieSecret, {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
@@ -27,5 +26,5 @@ export async function POST(req: Request) {
     path: "/",
   });
 
-  return NextResponse.json({ ok: true });
+  return res;
 }
