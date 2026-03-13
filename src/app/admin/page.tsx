@@ -58,9 +58,14 @@ export default function AdminLoginPage() {
           setError("Google 로그인에 실패했습니다.");
         }
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(e);
-      setError("Google 로그인 중 오류가 발생했습니다.");
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("unauthorized-domain") || msg.includes("auth/unauthorized-domain")) {
+        setError("도메인 인증 오류: Firebase Console에서 f1.324.ing를 허용 도메인에 추가해야 합니다.");
+      } else {
+        setError("Google 로그인 오류: " + msg);
+      }
     } finally {
       setLoading(false);
     }
