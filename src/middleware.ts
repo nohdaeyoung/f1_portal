@@ -20,7 +20,8 @@ export function middleware(request: NextRequest) {
   }
 
   // /api/admin/* 보호 (로그인 API 제외)
-  if (pathname.startsWith("/api/admin/") && pathname !== "/api/admin/login") {
+  const publicAdminApis = ["/api/admin/login", "/api/admin/google-login"];
+  if (pathname.startsWith("/api/admin/") && !publicAdminApis.includes(pathname)) {
     if (!isAuthenticated(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
