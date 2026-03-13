@@ -53,19 +53,14 @@ export default function AdminLoginPage() {
       } else {
         const data = await res.json();
         if (data.error === "Unauthorized email") {
-          setError(`관리자 Google 계정이 아닙니다. (로그인 계정: ${data.received || "unknown"})`);
+          setError("관리자 Google 계정이 아닙니다.");
         } else {
-          setError(`서버 오류 (${res.status}): ${data.error || "unknown"}`);
+          setError("Google 로그인에 실패했습니다.");
         }
       }
     } catch (e: unknown) {
       console.error(e);
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("unauthorized-domain") || msg.includes("auth/unauthorized-domain")) {
-        setError("도메인 인증 오류: Firebase Console에서 f1.324.ing를 허용 도메인에 추가해야 합니다.");
-      } else {
-        setError("Google 로그인 오류: " + msg);
-      }
+      setError("Google 로그인 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }

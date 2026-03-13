@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const receivedEmail = (decoded.email ?? "").trim().toLowerCase();
     const expectedEmail = allowedEmail.trim().toLowerCase();
     if (receivedEmail !== expectedEmail) {
-      return NextResponse.json({ error: "Unauthorized email", received: receivedEmail, expected: expectedEmail }, { status: 403 });
+      return NextResponse.json({ error: "Unauthorized email" }, { status: 403 });
     }
 
     const res = NextResponse.json({ ok: true, email: decoded.email });
