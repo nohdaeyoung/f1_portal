@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── 공통 헬퍼 ─────────────────────────────────────────
+    function isLoggedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isLoggedIn() && request.auth.uid == uid;
+    }
+
+    // ── 커뮤니티 posts ────────────────────────────────────
+    match /posts/{postId} {
+      allow read: if true;                        // 누구나 읽기
+      allow create: if isLoggedIn()               // 로그인 필수
+        && request.resource.data.authorId == request.auth.uid;
+      allow update: if isOwner(resource.data.authorId)
+        || (isLoggedIn()                          // 좋아요/댓글 수: 로그인 유저만, ±1 제한
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['likes', 'commentCount'])
+            && request.resource.data.likes >= 0
+            && request.resource.data.commentCount >= 0
+            && (request.resource.data.likes - resource.data.likes) in [-1, 0, 1]
+            && (request.resource.data.commentCount - resource.data.commentCount) in [-1, 0, 1]);
+      allow delete: if isOwner(resource.data.authorId);
+    }
+
+    // ── 커뮤니티 comments ─────────────────────────────────
+    match /posts/{postId}/comments/{commentId} {
+      allow read: if true;
+      allow create: if isLoggedIn()
+        && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.authorId);
+    }
+
+    // ── 커뮤니티 chat ─────────────────────────────────────
+    match /chat/{msgId} {
+      allow read: if true;
+      allow create: if isLoggedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow delete: if isOwner(resource.data.uid);
+    }
+
+    // ── 사용자 프로필 ──────────────────────────────────────
+    match /profiles/{uid} {
+      allow read: if true;
+      allow write: if isOwner(uid);
+    }
+
+    // ── 판타지 저장 ────────────────────────────────────────
+    match /fantasy/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if isOwner(uid);
+    }
+
+    // ── 어드민 전용 컬렉션 ──────────────────────────────────
+    // Firebase Auth 사용자는 접근 불가 (서버에서만 firebase-admin SDK로 접근)
+    match /admin/{document=**} {
+      allow read, write: if false;
+    }
+
+    // ── 예측(predictions) ─────────────────────────────────
+    match /predictions/{predId} {
+      allow read: if true;
+      allow create: if isLoggedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isOwner(resource.data.uid);
+    }
+
+  }
+}

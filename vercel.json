@@ -1,16 +1,24 @@
 {
   "crons": [
     {
-      "path": "/api/revalidate-digest",
-      "schedule": "0 16 * * *"
+      "path": "/api/cron/security-qa",
+      "schedule": "0 0 * * *"
     },
     {
-      "path": "/api/revalidate-digest-noon",
-      "schedule": "0 3 * * *"
+      "path": "/api/revalidate-digest",
+      "schedule": "0 21 * * *"
     },
     {
       "path": "/api/cron/devlog",
       "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/cron/community-bots",
+      "schedule": "0 4 * * 0"
+    },
+    {
+      "path": "/api/cron/race-result",
+      "schedule": "0 6 * * 0"
     }
   ]
 }

@@ -4,16 +4,13 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 /**
- * Vercel Cron Job — 매일 오전 7시 KST (22:00 UTC) 자동 호출
- * vercel.json: { "path": "/api/revalidate-digest", "schedule": "0 22 * * *" }
+ * Vercel Cron Job — 매일 KST 오전 6시 (21:00 UTC) 자동 호출
+ * vercel.json: { "path": "/api/revalidate-digest", "schedule": "0 21 * * *" }
  *
- * 1. 기존 AI 다이제스트 캐시 무효화 (revalidateTag)
- * 2. 별도 warm-digest 엔드포인트를 호출해 Claude API 프리워밍
- *    (Route Handler에서 revalidateTag는 다음 요청에서 적용되므로 분리 필요)
- * 3. 페이지 ISR 캐시 무효화
+ * 1. AI 다이제스트 캐시 무효화
+ * 2. warm-digest 호출로 즉시 생성
  */
 export async function GET(request: Request) {
-  // Vercel cron 요청 또는 비밀 토큰으로만 허용
   const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
@@ -21,21 +18,28 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 1. 캐시 무효화 (다음 요청부터 적용)
-  revalidateTag("ai-digest", "max");
+  const url = new URL(request.url);
+  const force = url.searchParams.get("force") === "1";
+  const utcHour = new Date().getUTCHours();
 
-  // 2. 페이지 ISR 갱신
+  // KST 6시 = UTC 21시. ?force=1 로 언제든 수동 실행 가능.
+  if (!force && utcHour !== 21) {
+    return NextResponse.json({ ok: true, skipped: true, reason: "21 UTC 외 건너뜀" });
+  }
+
+  revalidateTag("ai-digest", "max");
   revalidatePath("/news");
   revalidatePath("/");
 
-  // 3. 별도 요청으로 캐시 프리워밍 (fire-and-forget)
   const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
       : "https://f1.324.ing";
 
-  fetch(`${baseUrl}/api/warm-digest`).catch((e) =>
+  fetch(`${baseUrl}/api/warm-digest`, {
+    headers: cronSecret ? { authorization: `Bearer ${cronSecret}` } : {},
+  }).catch((e) =>
     console.error("[revalidate-digest] warm-digest 호출 실패:", e)
   );
 
@@ -43,6 +47,5 @@ export async function GET(request: Request) {
     revalidated: true,
     timestamp: new Date().toISOString(),
     message: "캐시 무효화 완료, warm-digest 프리워밍 시작",
-    warmUrl: `${baseUrl}/api/warm-digest`,
   });
 }
