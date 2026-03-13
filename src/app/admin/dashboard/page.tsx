@@ -62,6 +62,7 @@ export default async function AdminDashboardPage() {
       initialConfig={config}
       pendingRounds={pendingRounds}
       driverList={driverList}
+      adminGoogleEmail={process.env.ADMIN_GOOGLE_EMAIL}
     />
   );
 }

@@ -45,13 +45,14 @@ interface Props {
   driverList: DriverInfo[];
 }
 
-type Section = "analytics" | "nav" | "meta" | "circuit" | "race" | "season-points";
+type Section = "analytics" | "nav" | "meta" | "circuit" | "race" | "season-points" | "google";
 
 export default function AdminDashboardClient({
   initialConfig,
   pendingRounds,
   driverList,
-}: Props) {
+  adminGoogleEmail,
+}: Props & { adminGoogleEmail?: string }) {
   const router = useRouter();
   const [activeSection, setActiveSection] = useState<Section>("analytics");
   const [config, setConfig] = useState<AdminConfig>(initialConfig);
@@ -110,6 +111,7 @@ export default function AdminDashboardClient({
     { id: "circuit", label: "서킷 코너" },
     { id: "race", label: "레이스 결과" },
     { id: "season-points", label: "시즌 포인트" },
+    { id: "google", label: "Google 계정" },
   ];
 
   return (
@@ -430,6 +432,49 @@ export default function AdminDashboardClient({
           {/* Season points management */}
           {activeSection === "season-points" && (
             <SeasonPointsSection />
+          )}
+
+          {/* Google 계정 연동 */}
+          {activeSection === "google" && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-base font-bold text-white mb-1">Google 계정 연동</h2>
+                <p className="text-xs text-[#64748B]">
+                  관리자 페이지에 Google 로그인으로 접근할 수 있는 계정을 관리합니다.
+                </p>
+              </div>
+
+              <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl p-5 space-y-4">
+                <div>
+                  <p className="text-xs text-[#64748B] uppercase tracking-widest mb-2">현재 허용된 Google 계정</p>
+                  {adminGoogleEmail ? (
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#E8002D]/20 flex items-center justify-center text-sm font-bold text-[#E8002D]">
+                        {adminGoogleEmail[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="text-sm text-white font-medium">{adminGoogleEmail}</p>
+                        <p className="text-xs text-[#22C55E] mt-0.5">✓ Google 로그인 활성화됨</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#F59E0B]">⚠ Google 계정이 연동되지 않았습니다.</p>
+                  )}
+                </div>
+
+                <div className="border-t border-[#2D2D3A] pt-4">
+                  <p className="text-xs text-[#64748B] uppercase tracking-widest mb-3">계정 변경 방법</p>
+                  <div className="bg-[#0D0D14] rounded-lg p-4 space-y-2">
+                    <p className="text-xs text-[#94A3B8]">1. Vercel 대시보드 → 프로젝트 설정 → Environment Variables</p>
+                    <p className="text-xs text-[#94A3B8]">2. 아래 환경변수를 추가하거나 수정하세요:</p>
+                    <code className="block text-xs text-[#E8002D] font-mono mt-2">
+                      ADMIN_GOOGLE_EMAIL=your-email@gmail.com
+                    </code>
+                    <p className="text-xs text-[#94A3B8] mt-2">3. 저장 후 재배포하면 적용됩니다.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>
