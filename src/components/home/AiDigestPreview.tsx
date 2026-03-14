@@ -7,18 +7,44 @@ export function AiDigestPreview({ digest }: { digest: AiDigest | null }) {
     <section>
       <SectionHeader title="오늘의 F1" href="/news" linkLabel="AI 브리핑 전체 보기" />
       {digest ? (
-        <div className="bg-gradient-to-br from-[#1a1a2e] to-[#141420] border border-[#E8002D]/20 rounded-xl overflow-hidden">
-          <div className="bg-[#E8002D]/10 border-b border-[#E8002D]/20 px-5 py-4">
-            <p className="text-sm font-black text-white leading-snug">{digest.headline}</p>
+        <div className="hud-card rounded-xl overflow-hidden border border-border-default bg-bg-surface">
+          {/* 터미널 상단 바 */}
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-bg-overlay border-b border-border-subtle">
+            <span className="flex items-center gap-1.5" aria-hidden="true">
+              <span className="w-2.5 h-2.5 rounded-full bg-f1-red/70" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#FCD34D]/50" />
+              <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E]/50" />
+            </span>
+            <span className="font-mono text-[10px] text-text-disabled tracking-wider ml-2">
+              f1-ai-digest
+              <span className="animate-blink-cursor ml-0.5 text-[#00D2BE]">▎</span>
+            </span>
+            <span className="ml-auto font-display text-[9px] tracking-widest uppercase text-text-disabled">
+              claude · live
+            </span>
           </div>
+
+          {/* 헤드라인 */}
+          <div className="px-5 py-4 border-b border-border-subtle bg-f1-red/5">
+            <p className="font-display text-xs tracking-widest uppercase text-f1-red mb-2">
+              &gt; TODAY&#39;S HEADLINE
+            </p>
+            <p className="text-sm font-bold text-white leading-snug">{digest.headline}</p>
+          </div>
+
+          {/* 본문 */}
           <div className="px-5 py-4 space-y-4">
-            <p className="text-sm text-[#94A3B8] leading-relaxed line-clamp-3">{digest.summary}</p>
+            <p className="font-mono text-xs text-text-muted leading-relaxed line-clamp-2">
+              <span className="text-[#00D2BE]">$ </span>
+              {digest.summary}
+            </p>
+
             {digest.bullets.slice(0, 3).length > 0 && (
-              <ul className="space-y-2">
+              <ul className="space-y-2" aria-label="주요 포인트">
                 {digest.bullets.slice(0, 3).map((b, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <span className="shrink-0 mt-0.5">{b.emoji}</span>
-                    <span className="text-[#94A3B8]">
+                  <li key={i} className="flex items-start gap-2.5 text-sm animate-scan-sweep" style={{ animationDelay: `${i * 80}ms` }}>
+                    <span className="shrink-0 mt-0.5 text-base leading-none" aria-hidden="true">{b.emoji}</span>
+                    <span className="text-text-secondary leading-snug">
                       <span className="text-white font-semibold">{b.title} </span>
                       {b.text}
                     </span>
@@ -26,20 +52,38 @@ export function AiDigestPreview({ digest }: { digest: AiDigest | null }) {
                 ))}
               </ul>
             )}
+
             {digest.hotTopics.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-1 border-t border-[#2D2D3A]">
+              <div className="flex flex-wrap gap-1.5 pt-3 border-t border-border-subtle">
                 {digest.hotTopics.map((tag) => (
-                  <span key={tag} className="text-xs bg-white/5 text-[#94A3B8] px-2.5 py-1 rounded-full border border-white/10">
+                  <span
+                    key={tag}
+                    className="font-mono text-[10px] bg-white/5 text-text-muted px-2 py-0.5 rounded border border-border-subtle hover:border-[#00D2BE]/40 hover:text-[#00D2BE] transition-colors"
+                  >
                     #{tag}
                   </span>
                 ))}
               </div>
             )}
           </div>
+
+          {/* 하단 링크 */}
+          <div className="px-5 py-3 border-t border-border-subtle bg-bg-overlay/50">
+            <Link
+              href="/news"
+              className="font-display text-[10px] tracking-widest uppercase text-text-disabled hover:text-[#00D2BE] transition-colors focus-visible:outline-none focus-visible:text-[#00D2BE]"
+            >
+              FULL BRIEFING →
+            </Link>
+          </div>
         </div>
       ) : (
-        <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl p-6 text-sm text-[#64748B]">
-          뉴스 브리핑을 준비 중입니다...
+        <div className="hud-card rounded-xl border border-border-default bg-bg-surface px-5 py-8 text-center">
+          <p className="font-mono text-xs text-text-disabled">
+            <span className="text-[#00D2BE]">$ </span>
+            loading digest
+            <span className="animate-blink-cursor ml-0.5">▎</span>
+          </p>
         </div>
       )}
     </section>

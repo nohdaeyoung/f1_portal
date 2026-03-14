@@ -4,12 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import LapAnalysisTab from "./tabs/LapAnalysisTab";
 import StrategyTab from "./tabs/StrategyTab";
 import SpeedMapTab from "./tabs/SpeedMapTab";
-
+import CornerInsightsTab from "./tabs/CornerInsightsTab";
 const TABS = [
   { key: "telemetry", label: "텔레메트리" },
   { key: "laps",      label: "랩 분석" },
   { key: "strategy",  label: "레이스 전략" },
   { key: "speedmap",  label: "속도맵" },
+  { key: "corners",   label: "코너 분석" },
 ];
 
 const SESSIONS = [
@@ -80,7 +81,7 @@ function TrackMap({ points, color }: { points: TrackPoint[]; color: string }) {
 // ─── Main Component ──────────────────────────────────────────
 
 const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: CURRENT_YEAR - 2018 }, (_, i) => CURRENT_YEAR - i);
+const YEARS = Array.from({ length: CURRENT_YEAR - 2018 + 1 }, (_, i) => CURRENT_YEAR - i);
 
 export default function TelemetryClient({
   year: defaultYear,
@@ -91,7 +92,7 @@ export default function TelemetryClient({
   gp: string;
   raceName?: string;
 }) {
-  const initYear = defaultYear >= CURRENT_YEAR ? CURRENT_YEAR - 1 : defaultYear;
+  const initYear = defaultYear > CURRENT_YEAR ? CURRENT_YEAR : defaultYear;
   const [year, setYear] = useState(initYear);
   const [session, setSession] = useState("R");
   const [activeTab, setActiveTab] = useState("telemetry");
@@ -191,23 +192,26 @@ export default function TelemetryClient({
     <div className="space-y-5">
 
       {/* ── Filter Controls ── */}
-      <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl p-4 space-y-4">
+      <div className="hud-card bg-bg-raised border border-border-default rounded-xl p-4 space-y-3">
 
         {/* Row 1: Year + Session */}
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Year */}
           <div className="flex items-center gap-3">
-            <span className="text-[10px] text-[#475569] uppercase tracking-widest shrink-0">연도</span>
-            <div className="flex gap-1 flex-wrap">
+            <span className="font-display text-[10px] text-text-disabled uppercase tracking-widest shrink-0">YEAR</span>
+            <div className="flex gap-1 flex-wrap" role="group" aria-label="연도 선택">
               {YEARS.map((y) => (
                 <button
                   key={y}
                   onClick={() => setYear(y)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
+                  aria-pressed={year === y}
+                  className={[
+                    "px-2.5 py-1 rounded-md font-mono text-xs font-bold transition-colors tabular-nums",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red",
                     year === y
                       ? "bg-white/15 text-white ring-1 ring-white/20"
-                      : "bg-white/5 text-[#64748B] hover:text-white hover:bg-white/10"
-                  }`}
+                      : "bg-white/5 text-text-muted hover:text-white hover:bg-white/10",
+                  ].join(" ")}
                 >
                   {y}
                 </button>
@@ -216,21 +220,24 @@ export default function TelemetryClient({
           </div>
 
           {/* Divider */}
-          <div className="hidden sm:block w-px bg-[#2D2D3A] self-stretch" />
+          <div className="hidden sm:block w-px bg-border-default self-stretch" aria-hidden="true" />
 
           {/* Session */}
           <div className="flex items-center gap-3">
-            <span className="text-[10px] text-[#475569] uppercase tracking-widest shrink-0">세션</span>
-            <div className="flex gap-1 flex-wrap">
+            <span className="font-display text-[10px] text-text-disabled uppercase tracking-widest shrink-0">SESSION</span>
+            <div className="flex gap-1 flex-wrap" role="group" aria-label="세션 선택">
               {SESSIONS.map((s) => (
                 <button
                   key={s.key}
                   onClick={() => setSession(s.key)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors ${
+                  aria-pressed={session === s.key}
+                  className={[
+                    "px-3 py-1 rounded-md font-display text-[10px] font-bold tracking-widest uppercase transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red",
                     session === s.key
-                      ? "bg-[#E8002D] text-white"
-                      : "bg-white/5 text-[#64748B] hover:text-white hover:bg-white/10"
-                  }`}
+                      ? "bg-f1-red text-white"
+                      : "bg-white/5 text-text-muted hover:text-white hover:bg-white/10",
+                  ].join(" ")}
                 >
                   {s.label}
                 </button>
@@ -239,42 +246,6 @@ export default function TelemetryClient({
           </div>
         </div>
 
-        {/* Row 2: Driver selectors */}
-        {loadingResults ? (
-          <div className="flex items-center gap-2 text-xs text-[#64748B]">
-            <span className="w-3 h-3 border border-[#475569] border-t-white rounded-full animate-spin" />
-            드라이버 목록 로딩 중...
-          </div>
-        ) : results.length > 0 ? (
-          <div className="flex gap-3 flex-wrap">
-            {[
-              { label: "드라이버 A", value: driverA, setter: setDriverA, color: teamColorA },
-              { label: "드라이버 B", value: driverB, setter: setDriverB, color: teamColorB },
-            ].map(({ label, value, setter, color }) => (
-              <div key={label} className="flex items-center gap-2">
-                <span
-                  className="w-3 h-3 rounded-full shrink-0 ring-2 ring-black/30"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="text-[10px] text-[#475569] uppercase tracking-widest">{label}</span>
-                <select
-                  value={value}
-                  onChange={(e) => setter(e.target.value)}
-                  className="bg-[#0D0D14] border border-[#2D2D3A] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#E8002D] min-w-[120px]"
-                >
-                  <option value="">— 선택 —</option>
-                  {sortedResults.map((r) => (
-                    <option key={r.Abbreviation} value={r.Abbreviation}>
-                      {r.Abbreviation}{r.Position ? ` · P${r.Position}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-        ) : error ? null : (
-          <div className="text-xs text-[#475569]">세션을 선택하면 드라이버 목록이 표시됩니다.</div>
-        )}
       </div>
 
       {/* Error */}
@@ -285,42 +256,108 @@ export default function TelemetryClient({
       )}
 
       {/* ── Tab navigation ── */}
-      <div className="flex gap-0 border-b border-[#2D2D3A]">
-        {TABS.map((t) => (
+      <div
+        role="tablist"
+        aria-label="분석 탭"
+        className="flex gap-0 border-b border-border-subtle overflow-x-auto scrollbar-none"
+      >
+        {TABS.map((t, i) => (
           <button
             key={t.key}
+            role="tab"
+            id={`analysis-tab-${t.key}`}
+            aria-selected={activeTab === t.key}
+            aria-controls={`analysis-panel-${t.key}`}
+            tabIndex={activeTab === t.key ? 0 : -1}
             onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2.5 text-xs font-bold transition-colors border-b-2 -mb-px ${
+            onKeyDown={(e) => {
+              const keys = TABS.map((x) => x.key);
+              const idx = keys.indexOf(t.key);
+              if (e.key === "ArrowRight") setActiveTab(keys[(idx + 1) % keys.length]);
+              if (e.key === "ArrowLeft") setActiveTab(keys[(idx - 1 + keys.length) % keys.length]);
+            }}
+            className={[
+              "px-4 py-2.5 font-display text-[10px] tracking-widest uppercase transition-colors border-b-2 -mb-px shrink-0",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-inset",
               activeTab === t.key
-                ? "border-[#E8002D] text-white"
-                : "border-transparent text-[#64748B] hover:text-white"
-            }`}
+                ? "border-f1-red text-white"
+                : "border-transparent text-text-disabled hover:text-white",
+            ].join(" ")}
           >
             {t.label}
           </button>
         ))}
       </div>
 
+      {/* ── Driver selector (below tabs) ── */}
+      {loadingResults ? (
+        <div className="flex items-center gap-2 text-xs text-[#64748B]">
+          <span className="w-3 h-3 border border-[#475569] border-t-white rounded-full animate-spin" />
+          드라이버 목록 로딩 중...
+        </div>
+      ) : sortedResults.length > 0 && (
+        <div className="flex gap-3 flex-wrap items-center">
+          {/* Driver A — always shown */}
+          {[
+            { label: "드라이버 A", value: driverA, setter: setDriverA, color: teamColorA },
+            ...( (activeTab === "speedmap" || activeTab === "corners")
+              ? []
+              : [{ label: "드라이버 B", value: driverB, setter: setDriverB, color: teamColorB }]
+            ),
+          ].map(({ label, value, setter, color }) => (
+            <div key={label} className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full shrink-0 ring-2 ring-black/30" style={{ backgroundColor: color }} />
+              <span className="font-display text-[10px] text-text-disabled uppercase tracking-widest">{label}</span>
+              <select
+                value={value}
+                onChange={(e) => setter(e.target.value)}
+                className="bg-[#0D0D14] border border-[#2D2D3A] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#E8002D] min-w-[120px]"
+              >
+                <option value="">— 선택 —</option>
+                {sortedResults.map((r) => (
+                  <option key={r.Abbreviation} value={r.Abbreviation}>
+                    {r.Abbreviation}{r.Position ? ` · P${r.Position}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Tab Content ── */}
 
       {activeTab === "laps" && driverA && (
-        <LapAnalysisTab year={year} gp={gp} session={session}
-          driverA={driverA} driverB={driverB} colorA={teamColorA} colorB={teamColorB} />
+        <div role="tabpanel" id="analysis-panel-laps" aria-labelledby="analysis-tab-laps">
+          <LapAnalysisTab year={year} gp={gp} session={session}
+            driverA={driverA} driverB={driverB} colorA={teamColorA} colorB={teamColorB} />
+        </div>
       )}
 
       {activeTab === "strategy" && (
-        <StrategyTab year={year} gp={gp} session={session}
-          driverA={driverA} driverB={driverB} />
+        <div role="tabpanel" id="analysis-panel-strategy" aria-labelledby="analysis-tab-strategy">
+          <StrategyTab year={year} gp={gp} session={session}
+            driverA={driverA} driverB={driverB} />
+        </div>
       )}
 
       {activeTab === "speedmap" && (
-        <SpeedMapTab year={year} gp={gp} session={session}
-          driverA={driverA} driverB={driverB} colorA={teamColorA} colorB={teamColorB} />
+        <div role="tabpanel" id="analysis-panel-speedmap" aria-labelledby="analysis-tab-speedmap">
+          <SpeedMapTab year={year} gp={gp} session={session}
+            driverA={driverA} driverB="" colorA={teamColorA} colorB={teamColorB} />
+        </div>
+      )}
+
+      {activeTab === "corners" && (
+        <div role="tabpanel" id="analysis-panel-corners" aria-labelledby="analysis-tab-corners">
+          <CornerInsightsTab year={year} gp={gp} session={session}
+            driverA={driverA} driverB="" colorA={teamColorA} colorB={teamColorB} />
+        </div>
       )}
 
       {/* ── 텔레메트리 탭 ── */}
       {activeTab === "telemetry" && (
-        <div className="space-y-4">
+        <div role="tabpanel" id="analysis-panel-telemetry" aria-labelledby="analysis-tab-telemetry" className="space-y-4">
 
           {/* Loading telemetry */}
           {loadingTel && (

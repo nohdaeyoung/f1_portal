@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Barlow_Condensed, DM_Sans } from "next/font/google";
 import Link from "next/link";
 import Script from "next/script";
 import { NavLinks } from "@/components/layout/NavLinks";
@@ -54,9 +54,17 @@ async function getMetaCfg() {
   return (await getAdminCfg()).meta;
 }
 
-const inter = Inter({
+const barlowCondensed = Barlow_Condensed({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "600", "700", "800"],
+  variable: "--font-barlow-condensed",
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-dm-sans",
   display: "swap",
 });
 
@@ -86,6 +94,7 @@ export async function generateMetadata(): Promise<Metadata> {
       default: siteTitle,
       template,
     },
+    manifest: "/manifest.json",
     icons: {
       icon: [
         { url: "/favicon.ico" },
@@ -130,8 +139,15 @@ export default async function RootLayout({
 }>) {
   const analytics = await getAnalytics();
   return (
-    <html lang="ko" className={inter.variable}>
+    <html lang="ko" className={`${barlowCondensed.variable} ${dmSans.variable}`}>
       <body className="antialiased min-h-screen flex flex-col">
+        {/* Skip to main content (접근성) */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-f1-red focus:text-white focus:rounded-md focus:text-sm focus:font-bold"
+        >
+          본문 바로가기
+        </a>
         {/* GTM noscript */}
         {analytics.gtmId && (
           <noscript>
@@ -171,21 +187,29 @@ export default async function RootLayout({
         {analytics.bodyCode && (
           <div dangerouslySetInnerHTML={{ __html: analytics.bodyCode }} />
         )}
+        {/* Service Worker */}
+        <Script id="sw-register" strategy="afterInteractive">{`
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(() => {});
+          }
+        `}</Script>
         {/* GNB */}
         <header className="sticky top-0 z-50 bg-bg-base/90 backdrop-blur-md border-b border-border-default">
           <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Link
               href="/"
-              className="text-xl font-black tracking-tight text-white hover:text-f1-red transition-colors"
+              className="font-display text-2xl font-bold tracking-widest uppercase text-white hover:text-f1-red transition-colors"
             >
-              <span className="text-f1-red">F1</span> by 324.ing
+              <span className="text-f1-red">F1</span>
+              <span className="text-text-muted mx-1 font-light">·</span>
+              324.ING
             </Link>
             <NavLinks />
           </nav>
         </header>
 
         {/* Main */}
-        <main className="flex-1">{children}</main>
+        <main id="main-content" className="flex-1">{children}</main>
 
         {/* Footer */}
         <footer className="border-t border-border-default mt-16">
@@ -197,9 +221,11 @@ export default async function RootLayout({
               <div>
                 <Link
                   href="/"
-                  className="text-xl font-black text-white hover:text-f1-red transition-colors"
+                  className="font-display text-xl font-bold tracking-widest uppercase text-white hover:text-f1-red transition-colors"
                 >
-                  <span className="text-f1-red">F1</span> by 324.ing
+                  <span className="text-f1-red">F1</span>
+                  <span className="text-text-muted mx-1 font-light">·</span>
+                  324.ING
                 </Link>
                 <p className="mt-2 text-xs text-text-muted leading-relaxed">
                   2026 F1 종합 포털 — 규정, 드라이버, 팀,<br />
@@ -219,8 +245,7 @@ export default async function RootLayout({
                     { href: "/drivers", label: "드라이버" },
                     { href: "/teams", label: "팀" },
                     { href: "/circuits", label: "서킷" },
-                    { href: "/history", label: "역사" },
-                    { href: "/info", label: "레귤레이션" },
+                    { href: "/community", label: "커뮤니티" },
                   ].map((link) => (
                     <Link
                       key={link.href}
@@ -233,21 +258,32 @@ export default async function RootLayout({
                 </div>
               </div>
 
-              {/* Dev */}
+              {/* More */}
               <div>
                 <p className="text-xs font-bold text-text-secondary uppercase tracking-widest mb-3">
-                  개발
+                  더 알아보기
                 </p>
                 <div className="space-y-2">
+                  {[
+                    { href: "/history", label: "F1 역사" },
+                    { href: "/info", label: "레귤레이션" },
+                    { href: "/compare", label: "드라이버 비교" },
+                    { href: "/fantasy", label: "판타지" },
+                  ].map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="block text-sm text-text-muted hover:text-white transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
                   <Link
                     href="/devlog"
                     className="flex items-center gap-2 text-sm text-text-muted hover:text-white transition-colors group"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-status-active group-hover:animate-pulse" />
                     개발 노트
-                    <span className="text-xs text-status-active bg-status-active/10 px-1.5 py-0.5 rounded font-bold">
-                      매일 7시 갱신
-                    </span>
                   </Link>
                 </div>
               </div>

@@ -50,7 +50,7 @@ export function SessionTimetable({ sessions, highlightKey, liveKey, round }: Ses
           : "bg-white/[0.04] border-white/[0.08]"
         }`;
         return hasResult ? (
-          <Link key={sess.key} href={`/season/race/${round}/${sess.key}`} className={cls}>{inner}</Link>
+          <Link key={sess.key} href={`/season/race/${round}?session=${sess.key}`} className={cls}>{inner}</Link>
         ) : (
           <div key={sess.key} className={cls}>{inner}</div>
         );

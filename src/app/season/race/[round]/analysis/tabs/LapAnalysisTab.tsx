@@ -39,13 +39,13 @@ export default function LapAnalysisTab({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!driverA && !driverB) return;
     setLoading(true);
     Promise.all([
       fetch(`/api/fastf1/lap-times-all?year=${year}&gp=${gp}&session=${session}`).then(r => r.ok ? r.json() : []),
       fetch(`/api/fastf1/sector-best?year=${year}&gp=${gp}&session=${session}`).then(r => r.ok ? r.json() : []),
     ]).then(([l, s]) => { setLaps(l); setSectors(s); }).finally(() => setLoading(false));
-  }, [year, gp, session, driverA, driverB]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, gp, session]);
 
   if (loading) return <div className="text-sm text-[#64748B] animate-pulse">랩 분석 데이터 로딩 중...</div>;
 

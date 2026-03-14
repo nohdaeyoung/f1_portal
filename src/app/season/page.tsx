@@ -1,17 +1,22 @@
 import Link from "next/link";
-import { getDriver, getTeam, getCircuit, type Standing, type ConstructorStanding, type RaceCalendar, type SessionSchedule } from "@/data/f1-data";
+import { getDriver, getTeam, getCircuit, type RaceCalendar, type SessionSchedule } from "@/data/f1-data";
 import {
   fetchDriverStandings,
   fetchConstructorStandings,
   fetchCalendar,
+  fetchLastRacePodium,
+  fetchChampionshipProgress,
 } from "@/lib/data/live";
+import { PodiumSection } from "@/components/home/PodiumSection";
 import { RaceWeekendLive } from "./RaceWeekendLive";
+import { StandingsTabs } from "@/components/season/StandingsTabs";
+import { RoundStandingsViewer } from "@/components/season/RoundStandingsViewer";
 
 export const metadata = {
   title: "2026 시즌 트래커",
   description: "2026 F1 시즌 드라이버 챔피언십 순위, 컨스트럭터 순위, 레이스 캘린더 및 결과를 실시간으로 확인하세요.",
   openGraph: {
-    title: "2026 F1 시즌 트래커 | PitLane",
+    title: "2026 F1 시즌 트래커 | F1 by 324.ing",
     description: "2026 F1 시즌 드라이버 챔피언십 순위, 컨스트럭터 순위, 레이스 캘린더 및 결과를 실시간으로 확인하세요.",
     url: "https://f1.324.ing/season",
     images: [{ url: "/og-default.png", width: 1200, height: 630 }],
@@ -19,172 +24,23 @@ export const metadata = {
   twitter: { card: "summary_large_image" },
 };
 
-function DriverStandingsTable({ standings }: { standings: Standing[] }) {
-  return (
-    <section>
-      <h2 className="text-xl font-bold text-white mb-6">드라이버 챔피언십</h2>
-      <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#2D2D3A]">
-                <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase w-12">
-                  #
-                </th>
-                <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase">
-                  드라이버
-                </th>
-                <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase">
-                  팀
-                </th>
-                <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase w-16">
-                  승
-                </th>
-                <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase w-20">
-                  포인트
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((s) => {
-                const driver = getDriver(s.driverId);
-                if (!driver) return null;
-                return (
-                  <tr
-                    key={s.driverId}
-                    className="border-b border-[#2D2D3A]/50 hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <span
-                        className={`text-sm font-black ${
-                          s.position === 1
-                            ? "text-[#FCD34D]"
-                            : s.position === 2
-                              ? "text-[#C0C0C0]"
-                              : s.position === 3
-                                ? "text-[#CD7F32]"
-                                : "text-[#64748B]"
-                        }`}
-                      >
-                        {s.position}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/drivers/${driver.id}`}
-                        className="hover:text-[#E8002D] transition-colors"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span
-                            className="w-1 h-6 rounded-full"
-                            style={{ backgroundColor: driver.teamColor }}
-                          />
-                          <span className="font-bold text-white">
-                            {driver.firstName} {driver.lastName}
-                          </span>
-                        </span>
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-[#64748B]">{driver.team}</td>
-                    <td className="px-4 py-3 text-right text-white font-mono">
-                      {s.wins}
-                    </td>
-                    <td className="px-4 py-3 text-right text-white font-black text-base">
-                      {s.points}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  );
-}
+// ─── Date range helper ────────────────────────────────────────
 
-function ConstructorStandingsTable({
-  standings,
-}: {
-  standings: ConstructorStanding[];
-}) {
-  return (
-    <section>
-      <h2 className="text-xl font-bold text-white mb-6">
-        컨스트럭터 챔피언십
-      </h2>
-      <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-[#2D2D3A]">
-                <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase w-12">
-                  #
-                </th>
-                <th className="text-left px-4 py-3 text-xs text-[#64748B] uppercase">
-                  팀
-                </th>
-                <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase w-16">
-                  승
-                </th>
-                <th className="text-right px-4 py-3 text-xs text-[#64748B] uppercase w-20">
-                  포인트
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {standings.map((s) => {
-                const team = getTeam(s.teamId);
-                if (!team) return null;
-                return (
-                  <tr
-                    key={s.teamId}
-                    className="border-b border-[#2D2D3A]/50 hover:bg-white/[0.02] transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <span
-                        className={`text-sm font-black ${
-                          s.position === 1
-                            ? "text-[#FCD34D]"
-                            : s.position === 2
-                              ? "text-[#C0C0C0]"
-                              : s.position === 3
-                                ? "text-[#CD7F32]"
-                                : "text-[#64748B]"
-                        }`}
-                      >
-                        {s.position}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/teams/${team.id}`}
-                        className="hover:text-[#E8002D] transition-colors"
-                      >
-                        <span className="flex items-center gap-2">
-                          <span
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: team.primaryColor }}
-                          />
-                          <span className="font-bold text-white">{team.name}</span>
-                        </span>
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-right text-white font-mono">
-                      {s.wins}
-                    </td>
-                    <td className="px-4 py-3 text-right text-white font-black text-base">
-                      {s.points}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  );
+/** FP1 ISO(UTC) ~ 레이스 날짜 범위를 "MM.DD~DD" 형식으로 반환 */
+function fmtDateRange(raceDate: string, fp1Iso?: string): string {
+  const raceMM = raceDate.slice(5, 7);
+  const raceDD = raceDate.slice(8, 10);
+  const raceStr = `${raceMM}.${raceDD}`;
+  if (!fp1Iso) return raceStr;
+
+  const fp1 = new Date(fp1Iso);
+  const fp1MM = String(fp1.getUTCMonth() + 1).padStart(2, "0");
+  const fp1DD = String(fp1.getUTCDate()).padStart(2, "0");
+  if (fp1DD === raceDD) return raceStr;
+
+  return fp1MM === raceMM
+    ? `${fp1MM}.${fp1DD}~${raceDD}`
+    : `${fp1MM}.${fp1DD}~${raceMM}.${raceDD}`;
 }
 
 // ─── Session labels ───────────────────────────────────────────
@@ -269,57 +125,92 @@ function NextRaceSchedule({ race }: { race: RaceCalendar }) {
 }
 
 function RaceCalendarSection({ races }: { races: RaceCalendar[] }) {
+  const completedCount = races.filter((r) => r.status === "completed").length;
+  const totalCount = races.length;
+
   return (
     <section>
-      <h2 className="text-xl font-bold text-white mb-6">레이스 캘린더</h2>
-      <div className="space-y-3">
+      <div className="flex items-baseline gap-3 mb-5">
+        <h2 className="font-display text-xl font-bold tracking-widest uppercase text-white">
+          RACE CALENDAR
+        </h2>
+        <span className="font-mono text-xs text-text-disabled tabular-nums">
+          {completedCount}/{totalCount}
+        </span>
+        {/* progress bar */}
+        <div className="flex-1 h-px bg-border-subtle overflow-hidden rounded-full hidden sm:block">
+          <div
+            className="h-full bg-f1-red transition-all duration-700"
+            style={{ width: `${(completedCount / totalCount) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
         {races.map((race) => {
           const circuit = getCircuit(race.circuitId);
           const isNext = race.status === "next";
           const isCompleted = race.status === "completed";
 
           return (
-            <div
+            <Link
               key={race.round}
-              className={`flex items-center gap-4 rounded-xl p-4 border transition-all ${
+              href={`/season/race/${race.round}`}
+              className={[
+                "flex items-center gap-3 rounded-lg px-4 py-3 border transition-all group",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base",
                 isNext
-                  ? "bg-[#E8002D]/10 border-[#E8002D]/30"
-                  : "bg-[#141420] border-[#2D2D3A]"
-              }`}
+                  ? "bg-f1-red/8 border-f1-red/25 hover:bg-f1-red/12"
+                  : isCompleted
+                  ? "bg-transparent border-border-subtle/50 hover:bg-white/[0.02] opacity-70 hover:opacity-100"
+                  : "bg-bg-surface border-border-default hover:bg-white/[0.03]",
+              ].join(" ")}
             >
-              <div className="w-12 text-center">
-                <span className="text-xs text-[#64748B] block">R{race.round}</span>
+              {/* Round + status dot */}
+              <div className="w-10 shrink-0 flex flex-col items-center gap-0.5">
+                <span className="font-display text-[10px] font-bold tracking-widest uppercase text-text-disabled">
+                  R{String(race.round).padStart(2, "0")}
+                </span>
                 {isNext && (
-                  <span className="text-[10px] font-bold text-[#E8002D] block mt-0.5">
-                    NEXT
-                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-f1-red animate-pulse" aria-label="다음 레이스" />
+                )}
+                {isCompleted && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-status-active/60" aria-label="완료" />
                 )}
               </div>
+
+              {/* Divider */}
+              <div className={`w-px self-stretch ${isNext ? "bg-f1-red/30" : "bg-border-subtle"}`} aria-hidden="true" />
+
+              {/* Race name + circuit */}
               <div className="flex-1 min-w-0">
-                <Link
-                  href={`/season/race/${race.round}`}
-                  className="hover:text-[#E8002D] transition-colors"
-                >
-                  <span className="text-sm font-bold text-white block">
-                    {race.koreanName}
-                  </span>
-                </Link>
-                <span className="text-xs text-[#64748B] block">
-                  {circuit?.koreanName} &middot; {race.date}
+                <span className={`font-display text-sm font-bold tracking-wide block truncate transition-colors ${
+                  isNext ? "text-white" : isCompleted ? "text-text-secondary group-hover:text-white" : "text-text-secondary"
+                }`}>
+                  {race.koreanName}
+                </span>
+                <span className="font-mono text-[10px] text-text-disabled block truncate">
+                  {circuit?.koreanName}
+                  <span className="mx-1.5">·</span>
+                  {fmtDateRange(race.date, race.sessions?.fp1)}
                 </span>
               </div>
+
+              {/* Winner / status */}
               <div className="text-right shrink-0">
                 {isCompleted && race.winner ? (
-                  <span className="text-sm font-bold text-[#FCD34D]">
-                    {race.winner}
+                  <span className="font-display text-sm font-bold text-[#FCD34D] tracking-wide">
+                    {race.winner.split(" ").slice(-1)[0].toUpperCase()}
                   </span>
                 ) : isNext ? (
-                  <span className="text-xs font-bold text-[#E8002D]">곧 시작</span>
+                  <span className="font-display text-[10px] font-bold text-f1-red tracking-widest uppercase">
+                    NEXT →
+                  </span>
                 ) : (
-                  <span className="text-xs text-[#64748B]">예정</span>
+                  <span className="font-display text-[10px] text-text-disabled tracking-widest uppercase">TBD</span>
                 )}
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -327,8 +218,13 @@ function RaceCalendarSection({ races }: { races: RaceCalendar[] }) {
   );
 }
 
+function isPodiumWindow(raceDate: string): boolean {
+  const race = new Date(raceDate).getTime();
+  const now = Date.now();
+  return now >= race && now <= race + 3 * 24 * 3600 * 1000;
+}
+
 export default async function SeasonPage() {
-  // 3개 API를 병렬로 호출 (실패 시 각각 mock 폴백)
   const [driverStandings, constructorStandings, calendar] = await Promise.all([
     fetchDriverStandings(),
     fetchConstructorStandings(),
@@ -336,18 +232,42 @@ export default async function SeasonPage() {
   ]);
 
   const nextRace = calendar.find((r) => r.status === "next");
+  const completed = calendar.filter((r) => r.status === "completed");
+  const completedRounds = completed.map((r) => r.round);
+  const championshipProgress = completedRounds.length >= 2
+    ? await fetchChampionshipProgress(2026, completedRounds)
+    : [];
+  const lastCompleted = [...completed].reverse()[0];
+  const podiumData =
+    lastCompleted && isPodiumWindow(lastCompleted.date)
+      ? await fetchLastRacePodium(lastCompleted.round, lastCompleted.koreanName)
+      : null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <section className="mb-10 text-center">
-        <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
-          2026 시즌 트래커
+        <h1 className="font-display text-5xl sm:text-7xl font-bold text-white tracking-widest uppercase text-wrap-balance">
+          2026 SEASON
         </h1>
         <p className="mt-3 text-[#64748B]">
           드라이버 & 컨스트럭터 챔피언십 · {calendar.length} 라운드
         </p>
         <div className="mt-4 mx-auto w-16 h-1 bg-[#E8002D] rounded-full" />
+        <div className="mt-6">
+          <Link
+            href="/season/archive"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#141420] border border-[#2D2D3A] rounded-lg text-sm text-[#94A3B8] hover:text-white hover:border-[#3D3D4A] transition-colors"
+          >
+            역대 시즌 아카이브 →
+          </Link>
+        </div>
       </section>
+
+      {podiumData && (
+        <div className="mb-10">
+          <PodiumSection data={podiumData} />
+        </div>
+      )}
 
       {nextRace?.sessions && (
         <RaceWeekendLive
@@ -359,9 +279,42 @@ export default async function SeasonPage() {
       )}
       {nextRace && !nextRace.sessions && <NextRaceSchedule race={nextRace} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-        <DriverStandingsTable standings={driverStandings} />
-        <ConstructorStandingsTable standings={constructorStandings} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16 items-start">
+        <StandingsTabs
+          driverRows={driverStandings.flatMap((s) => {
+            const driver = getDriver(s.driverId);
+            if (!driver) return [];
+            return [{
+              driverId: s.driverId,
+              href: `/drivers/${driver.id}`,
+              firstName: driver.firstName,
+              lastName: driver.lastName,
+              teamColor: driver.teamColor,
+              team: driver.team,
+              position: s.position,
+              wins: s.wins,
+              points: s.points,
+            }];
+          })}
+          teamRows={constructorStandings.flatMap((s) => {
+            const team = getTeam(s.teamId);
+            if (!team) return [];
+            return [{
+              teamId: s.teamId,
+              href: `/teams/${team.id}`,
+              name: team.name,
+              primaryColor: team.primaryColor,
+              position: s.position,
+              wins: s.wins,
+              points: s.points,
+            }];
+          })}
+          championshipProgress={championshipProgress}
+          completedRounds={completedRounds}
+        />
+        {completedRounds.length > 0 && (
+          <RoundStandingsViewer completedRounds={completedRounds} season={2026} />
+        )}
       </div>
 
       <RaceCalendarSection races={calendar} />

@@ -32,7 +32,7 @@ export function Button({
   children,
   ...props
 }: ButtonProps) {
-  const base = "inline-flex items-center justify-center transition-colors";
+  const base = "inline-flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E8002D] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0F]";
   const styles = `${base} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
 
   if (href) {

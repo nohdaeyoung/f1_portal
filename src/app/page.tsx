@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { type RaceCalendar, type SessionSchedule } from "@/data/f1-data";
 import { fetchDriverStandings, fetchConstructorStandings, fetchCalendar } from "@/lib/data/live";
 import { getAiDigest } from "@/lib/api/ai-digest";
@@ -12,8 +13,29 @@ import { RecentResultsSection } from "@/components/home/RecentResultsSection";
 import { AiDigestPreview } from "@/components/home/AiDigestPreview";
 import { NewsFeedSection } from "@/components/home/NewsFeedSection";
 import { SeasonCalendar } from "@/components/home/SeasonCalendar";
+import { PodiumSection } from "@/components/home/PodiumSection";
+import { fetchLastRacePodium } from "@/lib/data/live";
 
 export const revalidate = 300; // ISR: 5분마다 재생성
+
+export const metadata: Metadata = {
+  title: "F1 by 324.ing — 2026 F1 종합 포털",
+  description: "2026 F1 시즌 드라이버·팀·서킷 정보, 실시간 레이스 결과, AI 뉴스 브리핑을 한 곳에서. 챔피언십 순위, 세션 일정, 커뮤니티.",
+  keywords: ["F1", "포뮬러원", "Formula 1", "2026 F1 시즌", "F1 드라이버", "F1 팀", "F1 서킷", "그랑프리", "F1 챔피언십", "F1 뉴스"],
+  alternates: { canonical: "https://f1.324.ing" },
+  openGraph: {
+    title: "F1 by 324.ing — 2026 F1 종합 포털",
+    description: "2026 F1 시즌 드라이버·팀·서킷 정보, 실시간 레이스 결과, AI 뉴스 브리핑을 한 곳에서.",
+    url: "https://f1.324.ing",
+    images: [{ url: "/og-default.png", width: 1200, height: 630, alt: "F1 by 324.ing" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "F1 by 324.ing — 2026 F1 종합 포털",
+    description: "2026 F1 시즌 드라이버·팀·서킷 정보, 실시간 레이스 결과, AI 뉴스 브리핑을 한 곳에서.",
+    images: ["/og-default.png"],
+  },
+};
 
 // ─── Utils ────────────────────────────────────────────────────
 
@@ -64,6 +86,12 @@ function getRaceWeekendInfo(nextRace: RaceCalendar | undefined, of1Sessions: OF1
 
 // ─── Page ───────────────────────────────────────────────────────
 
+function isPodiumWindow(raceDate: string): boolean {
+  const race = new Date(raceDate).getTime();
+  const now = Date.now();
+  return now >= race && now <= race + 3 * 24 * 3600 * 1000;
+}
+
 export default async function HomePage() {
   const year = new Date().getFullYear();
   const [driverStandings, constructorStandings, calendar, aiDigest, newsArticles, of1Sessions] =
@@ -82,6 +110,12 @@ export default async function HomePage() {
   const completed = calendar.filter((r) => r.status === "completed");
   const weekendInfo = getRaceWeekendInfo(nextRace, of1Sessions);
 
+  const lastCompleted = [...completed].reverse()[0];
+  const podiumData =
+    lastCompleted && isPodiumWindow(lastCompleted.date)
+      ? await fetchLastRacePodium(lastCompleted.round, lastCompleted.koreanName)
+      : null;
+
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(websiteSchema()) }} />
@@ -96,10 +130,18 @@ export default async function HomePage() {
 
         {weekendInfo.isWeekend && <LiveSessionDashboard />}
 
+        {podiumData && <PodiumSection data={podiumData} />}
+
         <ChampionshipsSection drivers={driverStandings} constructors={constructorStandings} />
 
-        {!weekendInfo.isWeekend && completed.length > 0 && (
-          <RecentResultsSection completed={completed} />
+        {!weekendInfo.isWeekend && (
+          completed.length > 0
+            ? <RecentResultsSection completed={completed} />
+            : (
+              <div className="text-center py-10 text-text-muted text-sm">
+                아직 완료된 레이스가 없습니다. 시즌 첫 레이스를 기대하세요!
+              </div>
+            )
         )}
 
         <AiDigestPreview digest={aiDigest} />
