@@ -68,10 +68,10 @@ export function AiDigestPreview({ digest }: { digest: AiDigest | null }) {
           </div>
 
           {/* 하단 링크 */}
-          <div className="px-5 py-3 border-t border-border-subtle bg-bg-overlay/50">
+          <div className="border-t border-border-subtle bg-bg-overlay/50">
             <Link
               href="/news"
-              className="font-display text-[10px] tracking-widest uppercase text-text-disabled hover:text-[#00D2BE] transition-colors focus-visible:outline-none focus-visible:text-[#00D2BE]"
+              className="flex items-center px-5 py-3 min-h-[44px] font-display text-[10px] tracking-widest uppercase text-text-disabled hover:text-[#00D2BE] transition-colors focus-visible:outline-none focus-visible:text-[#00D2BE]"
             >
               FULL BRIEFING →
             </Link>

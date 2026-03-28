@@ -14,7 +14,7 @@ export function SectionHeader({ title, href, linkLabel = "전체 보기", classN
       {href && (
         <Link
           href={href}
-          className="text-sm text-[#64748B] hover:text-[#E8002D] transition-colors font-medium"
+          className="inline-flex items-center py-3 text-sm text-[#64748B] hover:text-[#E8002D] transition-colors font-medium"
         >
           {linkLabel} →
         </Link>
