@@ -91,7 +91,7 @@ export function NavLinks() {
                   aria-expanded={isOpen}
                   aria-controls={menuId}
                   className={[
-                    "flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                    "flex items-center gap-1 px-3 min-h-[44px] text-sm font-medium rounded-lg transition-colors",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base",
                     active || isOpen
                       ? "text-white bg-white/8 font-semibold"
@@ -143,7 +143,7 @@ export function NavLinks() {
               key={link.href}
               href={link.href!}
               className={[
-                "px-3 py-2 text-sm font-medium rounded-lg transition-colors",
+                "inline-flex items-center px-3 min-h-[44px] text-sm font-medium rounded-lg transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base",
                 isActive(link.href!)
                   ? "text-white font-semibold border-b-2 border-f1-red rounded-none pb-[6px]"

@@ -345,7 +345,7 @@ export default async function NewsPage() {
       {/* ── Divider ────────────────────────────── */}
       <div className="flex items-center gap-4 mb-8">
         <div className="flex-1 h-px bg-[#2D2D3A]" />
-        <span className="text-xs text-[#64748B] uppercase tracking-widest">최신 뉴스 전체</span>
+        <span className="text-xs text-[#94A3B8] uppercase tracking-widest font-semibold">최신 뉴스 전체</span>
         <div className="flex-1 h-px bg-[#2D2D3A]" />
       </div>
 
