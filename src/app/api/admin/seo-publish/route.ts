@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
+import { getAdminDb } from "@/lib/firebase-admin";
 
 export const runtime = "nodejs";
 
@@ -12,19 +12,6 @@ const VALID_CATEGORIES: Category[] = [
   "기술 & 규정",
   "잡담",
 ];
-
-function getAdminDb() {
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-      }),
-    });
-  }
-  return getFirestore();
-}
 
 /**
  * POST /api/admin/seo-publish
@@ -83,9 +70,9 @@ export async function POST(request: NextRequest) {
 
     const postBody = body.body.trim();
 
-    const docRef = await db.collection("posts").add({
+    const payload = {
       authorId: "seo_machine",
-      authorNickname: "📊 SEO Machine",
+      authorNickname: "사미사 admin",
       authorAvatarUrl: null,
       category,
       title: body.title ?? null,
@@ -100,12 +87,21 @@ export async function POST(request: NextRequest) {
       seo: body.seo ?? null,
       createdAt: FieldValue.serverTimestamp(),
       updatedAt: null,
+    };
+
+    const counterRef = db.collection("meta").doc("postCounter");
+    const newId = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(counterRef);
+      const count = (snap.data()?.count ?? 0) + 1;
+      tx.set(counterRef, { count });
+      tx.set(db.collection("posts").doc(String(count)), payload);
+      return String(count);
     });
 
     return NextResponse.json({
       success: true,
-      postId: docRef.id,
-      postUrl: `https://f1.324.ing/community/${docRef.id}`,
+      postId: newId,
+      postUrl: `https://f1.324.ing/community/${newId}`,
       category,
       timestamp: new Date().toISOString(),
     });
