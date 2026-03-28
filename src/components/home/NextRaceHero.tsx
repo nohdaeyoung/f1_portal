@@ -57,9 +57,9 @@ export function NextRaceHero({ race }: { race: RaceCalendar }) {
         <div className="flex items-start justify-between gap-6 flex-wrap">
           {/* 레이스 제목 */}
           <div className="min-w-0">
-            <h2 className="font-display text-4xl sm:text-6xl font-bold text-white leading-none tracking-wide uppercase text-wrap-balance">
+            <h1 className="font-display text-4xl sm:text-6xl font-bold text-white leading-none tracking-wide uppercase text-wrap-balance">
               {race.koreanName}
-            </h2>
+            </h1>
             <p className="font-mono text-xs text-text-muted mt-2 tracking-wider">
               {circuit?.koreanName}
               <span className="mx-2 text-border-strong">·</span>
