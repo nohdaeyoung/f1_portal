@@ -19,6 +19,13 @@
     {
       "path": "/api/cron/race-result",
       "schedule": "0 6 * * 0"
+    },
+    {
+      "path": "/api/cron/replay-data",
+      "schedule": "0 0 * * *"
     }
-  ]
+  ],
+  "git": {
+    "deploymentEnabled": false
+  }
 }

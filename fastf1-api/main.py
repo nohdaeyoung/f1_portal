@@ -2,6 +2,7 @@
 FastF1 API Server
 Serves F1 telemetry and session data to the Next.js frontend.
 """
+from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -1173,6 +1174,65 @@ def get_lap_record_trend(
 
     _lap_trend_cache[gp] = results
     return results
+
+
+@app.post("/cron/generate-replay")
+async def cron_generate_replay(
+    request: Request,
+    year: int = Query(default=None),
+    gp: str = Query(default=None),
+    session: str = Query(default="R"),
+    fps: int = Query(default=5),
+):
+    """
+    Cron endpoint: generate replay data for the latest completed race.
+    If year/gp not provided, auto-detects the most recent race from Jolpica API.
+    Auth: Bearer CRON_SECRET
+    """
+    # Auth
+    cron_secret = os.environ.get("CRON_SECRET", "")
+    auth = request.headers.get("authorization", "")
+    if not cron_secret or auth != f"Bearer {cron_secret}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    # Auto-detect latest race if not specified
+    if not gp:
+        try:
+            import httpx
+            resp = httpx.get("https://api.jolpi.ca/ergast/f1/current/last/results.json", timeout=15)
+            data = resp.json()
+            race = data["MRData"]["RaceTable"]["Races"][0]
+            gp = race["raceName"]
+            year = int(race["season"])
+            logger.info(f"[cron] Auto-detected latest race: {year} {gp}")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to detect latest race: {e}")
+
+    # Check if already cached in R2
+    r2_key = _r2_replay_key(year, gp, session, fps)
+    cached = _r2_load(r2_key)
+    if cached:
+        return {"ok": True, "skipped": True, "reason": "Already cached in R2", "gp": gp, "year": year}
+
+    # Compute (ignore DISABLE_COMPUTE for cron)
+    try:
+        logger.info(f"[cron] Computing replay: {year} {gp} {session} {fps}fps")
+        result = _compute_replay_frames(year, gp, session, fps)
+        disk_path = _disk_replay_path(year, gp, session, fps)
+        _disk_save(disk_path, result)
+        _r2_save(r2_key, result)
+        _save_to_firebase(year, gp, session, fps, result)
+        logger.info(f"[cron] Done: {year} {gp} — {len(result.get('frames', []))} frames")
+        return {
+            "ok": True,
+            "gp": gp,
+            "year": year,
+            "frames": len(result.get("frames", [])),
+            "drivers": len(result.get("drivers", [])),
+        }
+    except Exception as e:
+        logger.error(f"[cron] Error: {year} {gp} — {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
