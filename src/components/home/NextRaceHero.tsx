@@ -115,19 +115,19 @@ export function NextRaceHero({ race }: { race: RaceCalendar }) {
         <div className="flex gap-2 flex-wrap">
           <Link
             href={`/season/race/${race.round}`}
-            className="font-display px-5 py-2 bg-f1-red text-white text-sm font-bold rounded-lg hover:bg-f1-red-dim transition-colors tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
+            className="font-display px-5 py-3 bg-f1-red text-white text-sm font-bold rounded-lg hover:bg-f1-red-dim transition-colors tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
           >
             ROUND PAGE →
           </Link>
           <Link
             href={`/circuits/${race.circuitId}`}
-            className="font-display px-5 py-2 bg-white/8 text-white text-sm font-bold rounded-lg hover:bg-white/15 transition-colors border border-border-default tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
+            className="font-display px-5 py-3 bg-white/8 text-white text-sm font-bold rounded-lg hover:bg-white/15 transition-colors border border-border-default tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
           >
             CIRCUIT INFO
           </Link>
           <Link
             href="/season"
-            className="font-display px-5 py-2 bg-white/8 text-white text-sm font-bold rounded-lg hover:bg-white/15 transition-colors border border-border-default tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
+            className="font-display px-5 py-3 bg-white/8 text-white text-sm font-bold rounded-lg hover:bg-white/15 transition-colors border border-border-default tracking-wide focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base"
           >
             FULL CALENDAR
           </Link>

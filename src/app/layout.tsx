@@ -250,7 +250,7 @@ export default async function RootLayout({
                     <Link
                       key={link.href}
                       href={link.href}
-                      className="text-sm text-text-muted hover:text-white transition-colors"
+                      className="text-sm text-text-muted hover:text-white transition-colors py-2"
                     >
                       {link.label}
                     </Link>
@@ -273,14 +273,14 @@ export default async function RootLayout({
                     <Link
                       key={link.href}
                       href={link.href}
-                      className="block text-sm text-text-muted hover:text-white transition-colors"
+                      className="block text-sm text-text-muted hover:text-white transition-colors py-2"
                     >
                       {link.label}
                     </Link>
                   ))}
                   <Link
                     href="/devlog"
-                    className="flex items-center gap-2 text-sm text-text-muted hover:text-white transition-colors group"
+                    className="flex items-center gap-2 text-sm text-text-muted hover:text-white transition-colors group py-2"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-status-active group-hover:animate-pulse" />
                     개발 노트
