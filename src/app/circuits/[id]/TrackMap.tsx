@@ -29,8 +29,82 @@ const GEOJSON_ID: Record<string, string> = {
   "yas-marina":  "ae-2009",
 };
 
+// Start/Finish line position as fraction of total coord count
+const SF_POSITIONS: Record<string, number> = {
+  "albert-park": 0.00,
+  "bahrain":     0.00,
+  "jeddah":      0.00,
+  "shanghai":    0.00,
+  "suzuka":      0.00,
+  "miami":       0.00,
+  "montreal":    0.00,
+  "monaco":      0.00,
+  "barcelona":   0.00,
+  "spielberg":   0.00,
+  "silverstone": 0.00,
+  "spa":         0.00,
+  "hungaroring": 0.00,
+  "zandvoort":   0.00,
+  "monza":       0.00,
+  "madrid":      0.00,
+  "baku":        0.00,
+  "singapore":   0.00,
+  "cota":        0.00,
+  "mexico-city": 0.00,
+  "interlagos":  0.00,
+  "las-vegas":   0.00,
+  "lusail":      0.00,
+  "yas-marina":  0.00,
+};
+
+// Sector split fractions:
+//   [s1End, s2End]                              — old 2-val (s0Start from SF_POSITIONS)
+//   [s1End, s2End, s3End]                       — old 3-val
+//   [s0Start, s1End, s2End, s3End]              — 4-val (s0Start overrides SF_POSITIONS)
+//   [[s1s,s1e],[s2s,s2e],[s3s,s3e]]             — new independent-start/end format
+type SectorSplitValue =
+  | [number, number]
+  | [number, number, number]
+  | [number, number, number, number]
+  | [[number, number], [number, number], [number, number]];
+const SECTOR_SPLITS: Record<string, SectorSplitValue> = {
+  "albert-park": [0.30, 0.62],
+  "bahrain":     [0.33, 0.65],
+  "jeddah":      [0.35, 0.65],
+  "shanghai":    [0.30, 0.65],
+  "suzuka":      [0.40, 0.70],
+  "miami":       [0.35, 0.65],
+  "montreal":    [0.40, 0.70],
+  "monaco":      [0.35, 0.65],
+  "barcelona":   [0.30, 0.65],
+  "spielberg":   [0.30, 0.65],
+  "silverstone": [0.35, 0.65],
+  "spa":         [0.18, 0.58],
+  "hungaroring": [0.30, 0.65],
+  "zandvoort":   [0.30, 0.65],
+  "monza":       [0.25, 0.55],
+  "madrid":      [0.30, 0.65],
+  "baku":        [0.40, 0.70],
+  "singapore":   [0.35, 0.65],
+  "cota":        [0.30, 0.60],
+  "mexico-city": [0.30, 0.65],
+  "interlagos":  [0.30, 0.65],
+  "las-vegas":   [0.30, 0.65],
+  "lusail":      [0.35, 0.65],
+  "yas-marina":  [0.35, 0.65],
+};
+
 // Famous corner annotations (lat/lng in WGS84)
 const CIRCUIT_CORNERS: Record<string, CornerData[]> = {
+  "albert-park": [
+    { name: "T1 브라밤",    lat: -37.8497, lng: 144.9693, anchor: "right"  },
+    { name: "T3 존스",      lat: -37.8515, lng: 144.9742, anchor: "below"  },
+    { name: "T6 린트",      lat: -37.8558, lng: 144.9742, anchor: "below"  },
+    { name: "T9-10 치케인", lat: -37.8562, lng: 144.9648, anchor: "left"   },
+    { name: "T11 아스카리", lat: -37.8505, lng: 144.9624, anchor: "left"   },
+    { name: "T13 세나",     lat: -37.8472, lng: 144.9658, anchor: "above"  },
+    { name: "T15-16 팬지오",lat: -37.8473, lng: 144.9685, anchor: "above"  },
+  ],
   "spa": [
     { name: "라 소스",    lat: 50.4363, lng: 5.9714, anchor: "right"  },
     { name: "오루주",     lat: 50.4358, lng: 5.9726, anchor: "below"  },
@@ -125,15 +199,75 @@ function computeProjection(
   return { path, proj: { x0, y1, s, ox, oy } };
 }
 
+// ─── Firestore circuit override ───────────────────────────────
+
+async function fetchCircuitOverride(circuitId: string): Promise<{
+  corners?: CornerData[];
+  sectors?: [[number, number], [number, number], [number, number]];
+  sfPosition?: number;
+  dirReversed?: boolean;
+} | null> {
+  try {
+    const { initializeApp, getApps, cert } = await import("firebase-admin/app");
+    const { getFirestore } = await import("firebase-admin/firestore");
+    if (!getApps().length) {
+      initializeApp({
+        credential: cert({
+          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+        }),
+      });
+    }
+    const snap = await getFirestore().doc(`circuits/${circuitId}`).get();
+    if (!snap.exists) return null;
+    const data = snap.data() as Record<string, unknown>;
+    // Firestore doesn't support nested arrays — sectors stored as [{s,e},...] objects
+    let sectors: [[number, number], [number, number], [number, number]] | undefined;
+    if (Array.isArray(data.sectors) && data.sectors.length === 3) {
+      const raw = data.sectors as { s: number; e: number }[];
+      sectors = raw.map(({ s, e }) => [s, e]) as [[number,number],[number,number],[number,number]];
+    }
+    return {
+      corners: data.corners as CornerData[] | undefined,
+      sectors,
+      sfPosition: data.sfPosition as number | undefined,
+      dirReversed: data.dirReversed as boolean | undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ─── Server component ─────────────────────────────────────────
 
 export async function TrackMap({ circuitId }: { circuitId: string }) {
   const coords = await fetchCoords(circuitId);
   if (!coords?.length) return null;
 
+  // Firestore override (admin saved values take precedence over hardcoded defaults)
+  const override = await fetchCircuitOverride(circuitId);
+
   const W = 900, H = 540, pad = 48;
   const { path, proj } = computeProjection(coords, W, H, pad);
-  const corners = CIRCUIT_CORNERS[circuitId] ?? [];
+
+  // Corners: Firestore override → hardcoded default
+  const corners = override?.corners ?? (CIRCUIT_CORNERS[circuitId] ?? []);
+
+  // Sectors
+  const savedSectors = override?.sectors;
+  const rawSplits = SECTOR_SPLITS[circuitId];
+  const isPairs = Array.isArray(rawSplits?.[0]);
+  const initialSectors: [[number, number], [number, number], [number, number]] | undefined =
+    savedSectors ?? (isPairs ? rawSplits as [[number, number], [number, number], [number, number]] : undefined);
+  // Legacy flat formats (only used if no saved/pairs format)
+  const has4 = !isPairs && !savedSectors && rawSplits?.length === 4;
+  const initialSplits = initialSectors ? undefined : has4
+    ? [(rawSplits as number[])[1], (rawSplits as number[])[2], (rawSplits as number[])[3]] as [number, number, number]
+    : (rawSplits as [number, number] | [number, number, number] | undefined);
+  const initialSfPosition = override?.sfPosition
+    ?? (has4 ? (rawSplits as number[])[0] : (SF_POSITIONS[circuitId] ?? 0));
+  const initialDirReversed = override?.dirReversed ?? false;
 
   return (
     <TrackMapClient
@@ -141,7 +275,13 @@ export async function TrackMap({ circuitId }: { circuitId: string }) {
       W={W}
       H={H}
       proj={proj}
+      circuitId={circuitId}
       initialCorners={corners}
+      rawCoords={coords}
+      initialSplits={initialSplits}
+      initialSectors={initialSectors}
+      initialSfPosition={initialSfPosition}
+      initialDirReversed={initialDirReversed}
     />
   );
 }

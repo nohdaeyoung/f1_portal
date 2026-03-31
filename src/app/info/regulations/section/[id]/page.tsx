@@ -12,8 +12,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const section = sectionMap[id.toUpperCase()];
   if (!section) return {};
   return {
-    title: `2026 F1 ${section.label} ${section.title} | PitLane`,
-    description: `${section.titleEn} — FIA 2026 F1 규정 한국어 번역`,
+    title: `2026 F1 규정 ${section.label}: ${section.title}`,
+    description: `${section.titleEn} — FIA 2026 F1 규정 ${section.label} 한국어 번역. ${section.articles.length}개 조항.`,
+    keywords: ["FIA 규정", "F1 규정", `Section ${section.label}`, section.title, "2026 F1"],
+    alternates: { canonical: `https://f1.324.ing/info/regulations/section/${id}` },
+    openGraph: {
+      title: `2026 F1 규정 ${section.label}: ${section.title} | F1 by 324.ing`,
+      description: `${section.titleEn} — FIA 2026 F1 규정 ${section.label} 한국어 번역.`,
+      url: `https://f1.324.ing/info/regulations/section/${id}`,
+      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    },
+    twitter: { card: "summary_large_image", title: `2026 F1 규정 ${section.label}: ${section.title} | F1 by 324.ing`, description: `${section.titleEn} — FIA 2026 F1 규정 한국어 번역` },
   };
 }
 

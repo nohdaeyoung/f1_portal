@@ -47,7 +47,7 @@ export default async function AdminDashboardPage() {
   const config = await readConfig();
 
   const pendingRounds = calendar
-    .filter((r) => r.status !== "completed")
+    .filter((r) => r.status !== "completed" && r.status !== "cancelled")
     .map((r) => ({ round: r.round, label: `Round ${r.round} — ${r.koreanName}` }));
 
   const driverList = drivers.map((d) => ({

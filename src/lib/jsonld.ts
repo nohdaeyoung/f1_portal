@@ -4,7 +4,7 @@
  */
 
 const SITE_URL = "https://f1.324.ing";
-const SITE_NAME = "PitLane";
+const SITE_NAME = "F1 by 324.ing";
 
 export function websiteSchema() {
   return {

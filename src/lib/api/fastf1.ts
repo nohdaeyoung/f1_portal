@@ -164,3 +164,70 @@ export async function getFF1LapComparison(
     drivers: drivers.join(","),
   });
 }
+
+// ─── Replay Types ──────────────────────────────────────────────
+
+export interface FF1ReplayPosition {
+  d: string;
+  x: number;
+  y: number;
+  status: "on_track" | "pit" | "out";
+  compound: string;
+}
+
+export interface FF1DriverTelemetry {
+  driver: string;
+  total_frames: number;
+  fps: number;
+  speed: number[] | null;
+  gear: number[] | null;
+  throttle: number[] | null;
+  brake: number[] | null;
+  drs: number[] | null;
+  tyre_life: number[];
+}
+
+export interface FF1ReplayLeaderRow {
+  pos: number;
+  d: string;
+  gap: number | null;
+  compound: string;
+}
+
+export interface FF1ReplayFrame {
+  lap: number;
+  t: number;
+  positions: FF1ReplayPosition[];
+  leaderboard: FF1ReplayLeaderRow[];
+}
+
+export interface FF1ReplayData {
+  total_laps: number;
+  total_frames: number;
+  fps: number;
+  track: { x: number; y: number }[];
+  bounds: { min_x: number; max_x: number; min_y: number; max_y: number };
+  drivers: string[];
+  colors: Record<string, string>;
+  compounds: Record<string, string[]>;
+  frames: FF1ReplayFrame[];
+}
+
+export async function getFF1DriverTelemetry(
+  year: number,
+  gp: string,
+  session: string,
+  driver: string,
+  fps = 5
+) {
+  return ff1Fetch<FF1DriverTelemetry>("/driver-telemetry", { year, gp, session, driver, fps });
+}
+
+export async function getFF1ReplayFrames(
+  year: number,
+  gp: string,
+  session = "R",
+  fps = 5
+) {
+  return ff1Fetch<FF1ReplayData>("/replay-frames", { year, gp, session, fps });
+}

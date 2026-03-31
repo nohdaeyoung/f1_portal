@@ -21,6 +21,7 @@ import {
   getDriverHistory,
   getDriverPoles,
   getDriverResults,
+  getDriverStandingsAtRound,
   type JolpicaStanding,
   type JolpicaConstructorStanding,
   type JolpicaRace,
@@ -34,6 +35,7 @@ import {
   constructorStandings as mockConstructorStandings,
   calendar as mockCalendar,
   sessionSchedules,
+  getDriver,
   type Standing,
   type ConstructorStanding,
   type RaceCalendar,
@@ -46,7 +48,8 @@ import {
 const JOLPICA_TO_LOCAL_DRIVER: Record<string, string> = {
   // Red Bull
   max_verstappen: "verstappen",
-  isack_hadjar: "hadjar",
+  isack_hadjar: "hadjar",   // 구 ID (호환성 유지)
+  hadjar: "hadjar",
   // McLaren
   lando_norris: "norris",
   oscar_piastri: "piastri",
@@ -55,8 +58,9 @@ const JOLPICA_TO_LOCAL_DRIVER: Record<string, string> = {
   charles_leclerc: "leclerc",
   // Mercedes
   george_russell: "russell",
-  andrea_kimi_antonelli: "antonelli",
-  kimi_antonelli: "antonelli",
+  andrea_kimi_antonelli: "antonelli", // 구 ID (호환성 유지)
+  kimi_antonelli: "antonelli",        // 구 ID (호환성 유지)
+  antonelli: "antonelli",
   // Aston Martin
   fernando_alonso: "alonso",
   lance_stroll: "stroll",
@@ -101,7 +105,7 @@ const LOCAL_TO_JOLPICA_DRIVER: Record<string, string> = {
   sainz:       "sainz",
   albon:       "albon",
   lawson:      "lawson",
-  lindblad:    "lindblad",
+  lindblad:    "arvid_lindblad",
   ocon:        "ocon",
   bearman:     "bearman",
   hulkenberg:  "hulkenberg",
@@ -302,13 +306,41 @@ async function _fetchCalendar(): Promise<RaceCalendar[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 로컬 캘린더에서 한국어/영어 이름 & circuitId 조회 (round 기준)
-    const localByRound = new Map(
-      mockCalendar.map((r) => [r.round, r])
+    // 로컬 캘린더를 circuitId 기반으로 조회 (API round가 재번호 매겨질 수 있으므로)
+    const localByCircuit = new Map(
+      mockCalendar.map((r) => [r.circuitId, r])
     );
 
-    // 결과 맵: round → 우승자 이름
-    const winnerByRound = new Map(
+    // Jolpica circuitId → 로컬 circuitId 매핑
+    const jolpicaToLocal: Record<string, string> = {
+      albert_park: "albert-park",
+      shanghai: "shanghai",
+      suzuka: "suzuka",
+      bahrain: "bahrain",
+      jeddah: "jeddah",
+      miami: "miami",
+      villeneuve: "montreal",
+      monaco: "monaco",
+      catalunya: "barcelona",
+      red_bull_ring: "spielberg",
+      silverstone: "silverstone",
+      spa: "spa",
+      hungaroring: "hungaroring",
+      zandvoort: "zandvoort",
+      monza: "monza",
+      madrid: "madrid",
+      baku: "baku",
+      marina_bay: "singapore",
+      americas: "cota",
+      rodriguez: "mexico-city",
+      interlagos: "interlagos",
+      las_vegas: "las-vegas",
+      losail: "lusail",
+      yas_marina: "yas-marina",
+    };
+
+    // 결과 맵: API round → 우승자 이름
+    const winnerByApiRound = new Map(
       results
         .filter((r: JolpicaRace) => r.Results && r.Results.length > 0)
         .map((r: JolpicaRace) => [
@@ -319,11 +351,14 @@ async function _fetchCalendar(): Promise<RaceCalendar[]> {
 
     let nextSet = false;
 
-    return schedule.map((r: JolpicaRace) => {
-      const round = parseInt(r.round);
-      const local = localByRound.get(round);
+    // API 데이터를 로컬 라운드 번호 기준으로 매핑
+    const apiEntries: RaceCalendar[] = schedule.map((r: JolpicaRace) => {
+      const apiRound = parseInt(r.round);
+      const localCircuitId = jolpicaToLocal[r.Circuit.circuitId] ?? r.Circuit.circuitId;
+      const local = localByCircuit.get(localCircuitId);
+      const localRound = local?.round ?? apiRound;
       const raceDate = new Date(r.date);
-      const winner = winnerByRound.get(round);
+      const winner = winnerByApiRound.get(apiRound);
 
       let status: RaceCalendar["status"];
       if (winner || raceDate < today) {
@@ -336,7 +371,7 @@ async function _fetchCalendar(): Promise<RaceCalendar[]> {
       }
 
       // 세션 일정 — API 데이터 우선, 없으면 정적 폴백
-      const sessions: SessionSchedule = sessionSchedules[round] ?? sessionSchedules[1];
+      const sessions: SessionSchedule = { ...(sessionSchedules[localRound] ?? sessionSchedules[1]) };
       if (r.FirstPractice?.date) {
         sessions.fp1 = `${r.FirstPractice.date}T${r.FirstPractice.time}`;
       }
@@ -359,23 +394,48 @@ async function _fetchCalendar(): Promise<RaceCalendar[]> {
       sessions.isSprint = !!r.Sprint;
 
       return {
-        round,
+        round: localRound,
         name: r.raceName,
         koreanName: local?.koreanName ?? r.raceName,
-        circuitId: local?.circuitId ?? r.Circuit.circuitId,
+        circuitId: localCircuitId,
         date: r.date,
         status,
         winner,
         sessions,
       };
     });
+
+    // 취소된 라운드를 삽입 (API에서 빠진 것들)
+    const cancelledRaces: RaceCalendar[] = mockCalendar
+      .filter((r) => r.status === "cancelled")
+      .map((r) => ({
+        ...r,
+        sessions: sessionSchedules[r.round],
+      }));
+
+    // 모든 항목을 합치고 round 순 정렬
+    const merged = [...apiEntries, ...cancelledRaces].sort((a, b) => a.round - b.round);
+    return merged;
   } catch (e) {
     console.warn("[live] calendar API failed → mock 사용", e);
-    // 정적 폴백에도 세션 데이터 포함
-    return mockCalendar.map((r) => ({
-      ...r,
-      sessions: sessionSchedules[r.round],
-    }));
+    // 정적 폴백 — 날짜 기반으로 status 동적 계산
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let nextSet = false;
+    return mockCalendar.map((r) => {
+      let status = r.status;
+      if (status !== "cancelled") {
+        if (r.winner || new Date(r.date) < today) {
+          status = "completed";
+        } else if (!nextSet) {
+          status = "next";
+          nextSet = true;
+        } else {
+          status = "upcoming";
+        }
+      }
+      return { ...r, status, sessions: sessionSchedules[r.round] };
+    });
   }
 }
 
@@ -527,6 +587,14 @@ export interface QualifyingResult {
   q3?: string;
 }
 
+/** 완주자 먼저(position 오름차순), 미완주자(DNF/DNS/DSQ) 뒤로 */
+function sortResults(a: RaceResult, b: RaceResult): number {
+  const aFinished = !isNaN(parseInt(a.positionText));
+  const bFinished = !isNaN(parseInt(b.positionText));
+  if (aFinished !== bFinished) return aFinished ? -1 : 1;
+  return a.position - b.position;
+}
+
 function mapResult(r: JolpicaResult): RaceResult {
   const pos = parseInt(r.position);
   return {
@@ -558,7 +626,7 @@ export async function fetchRaceResult(round: number | string): Promise<{
     return {
       raceName: race.raceName,
       date: race.date,
-      results: race.Results.map(mapResult),
+      results: race.Results.map(mapResult).sort(sortResults),
     };
   } catch (e) {
     console.warn(`[live] fetchRaceResult(${round}) failed`, e);
@@ -579,7 +647,7 @@ export async function fetchQualifyingResult(round: number | string): Promise<Qua
       q1: r.Q1,
       q2: r.Q2,
       q3: r.Q3,
-    }));
+    })).sort((a, b) => a.position - b.position);
   } catch (e) {
     console.warn(`[live] fetchQualifyingResult(${round}) failed`, e);
     return [];
@@ -590,14 +658,150 @@ export async function fetchSprintResult(round: number | string): Promise<RaceRes
   try {
     const race = await getSprintResults(round);
     if (!race?.Results?.length) return null;
-    return race.Results.map(mapResult);
+    return race.Results.map(mapResult).sort(sortResults);
   } catch (e) {
     console.warn(`[live] fetchSprintResult(${round}) failed`, e);
     return null;
   }
 }
 
+// ─── 최근 레이스 포디움 ───────────────────────────────────────
+
+export interface PodiumEntry {
+  position: 1 | 2 | 3;
+  driverId: string;
+  driverName: string;
+  team: string;
+  teamColor: string;
+  gap: string; // pos1: 전체 레이스 타임, pos2+: 갭 (e.g. "+12.345")
+  headshotUrl?: string;
+}
+
+export interface LastRacePodium {
+  raceName: string;
+  koreanName: string;
+  round: number;
+  date: string;
+  podium: PodiumEntry[];
+}
+
+const _fetchPodiumForRound = unstable_cache(
+  async (round: number, koreanName: string): Promise<LastRacePodium | null> => {
+    try {
+      const race = await getRaceResults(round);
+      if (!race?.Results || race.Results.length < 3) return null;
+
+      const top3 = race.Results
+        .filter((r) => ["1", "2", "3"].includes(r.positionText))
+        .sort((a, b) => parseInt(a.position) - parseInt(b.position))
+        .slice(0, 3);
+
+      if (top3.length < 3) return null;
+
+      // 헤드샷 URL 취득 (드라이버 번호 기준, 실패 시 undefined)
+      const of1Drivers = await getLatestDrivers().catch(() => []);
+      const headshotByNumber = new Map(
+        of1Drivers
+          .filter((d) => d.headshot_url && !d.headshot_url.includes("d_driver_fallback_image"))
+          .map((d) => [d.driver_number, d.headshot_url!])
+      );
+
+      const podium: PodiumEntry[] = top3.map((r) => {
+        const localId = JOLPICA_TO_LOCAL_DRIVER[r.Driver.driverId] ?? r.Driver.driverId;
+        const driver = getDriver(localId);
+        return {
+          position: parseInt(r.position) as 1 | 2 | 3,
+          driverId: localId,
+          driverName: `${r.Driver.givenName} ${r.Driver.familyName}`,
+          team: r.Constructor.name,
+          teamColor: driver?.teamColor ?? "#888888",
+          gap: r.Time?.time ?? "",
+          headshotUrl: driver ? headshotByNumber.get(driver.number) : undefined,
+        };
+      });
+
+      return { raceName: race.raceName, koreanName, round, date: race.date, podium };
+    } catch (e) {
+      console.warn(`[live] podium fetch failed (round=${round})`, e);
+      return null;
+    }
+  },
+  ["last-race-podium"],
+  { revalidate: 300 }
+);
+
+export function fetchLastRacePodium(round: number, koreanName: string) {
+  return _fetchPodiumForRound(round, koreanName);
+}
+
 // ─── 드라이버 헤드샷 URL ──────────────────────────────────────
+
+// ─── 챔피언십 포인트 추이 ─────────────────────────────────────
+
+export interface ChampionshipProgress {
+  driverId: string;
+  driverName: string;
+  teamColor: string;
+  // index = round-1, value = cumulative points after that round
+  points: (number | null)[];
+}
+
+export async function fetchChampionshipProgress(
+  season: number,
+  completedRounds: number[]
+): Promise<ChampionshipProgress[]> {
+  if (completedRounds.length === 0) return [];
+
+  try {
+    // fetch round-by-round standings (batched, 3 at a time)
+    const allRoundStandings = await Promise.all(
+      completedRounds.map((r) => getDriverStandingsAtRound(season, r))
+    );
+
+    // build map: driverId → points per round
+    const map = new Map<string, { name: string; color: string; pts: (number | null)[] }>();
+
+    // collect top 10 drivers from last round
+    const lastRound = allRoundStandings[allRoundStandings.length - 1];
+    const topDriverIds = lastRound.slice(0, 10).map((d) => d.Driver.driverId);
+
+    for (const driverId of topDriverIds) {
+      map.set(driverId, { name: "", color: "#ffffff", pts: [] });
+    }
+
+    for (const standings of allRoundStandings) {
+      for (const driverId of topDriverIds) {
+        const entry = standings.find((d) => d.Driver.driverId === driverId);
+        map.get(driverId)!.pts.push(entry ? Number(entry.points) : null);
+        if (entry) {
+          const info = map.get(driverId)!;
+          info.name = `${entry.Driver.givenName} ${entry.Driver.familyName}`;
+        }
+      }
+    }
+
+    // match team colors from local drivers data
+    const { drivers: localDrivers } = await import("@/data/f1-data");
+    const jolpicaToLocal: Record<string, string> = {};
+    for (const d of localDrivers) {
+      const jolpicaId = LOCAL_TO_JOLPICA_DRIVER[d.id];
+      if (jolpicaId) jolpicaToLocal[jolpicaId] = d.teamColor;
+    }
+
+    return topDriverIds.map((driverId) => {
+      const info = map.get(driverId)!;
+      return {
+        driverId,
+        driverName: info.name,
+        teamColor: jolpicaToLocal[driverId] ?? "#64748B",
+        points: info.pts,
+      };
+    });
+  } catch (e) {
+    console.warn("[live] championship progress failed", e);
+    return [];
+  }
+}
 
 export async function fetchDriverHeadshot(driverNumber: number): Promise<string | null> {
   try {

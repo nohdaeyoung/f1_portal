@@ -17,7 +17,16 @@ export async function generateMetadata({
   if (!era) return { title: "Not Found" };
   return {
     title: `${era.name} (${era.period})`,
-    description: era.tagline,
+    description: `${era.tagline} — F1 ${era.period} 시대의 챔피언, 드라이버, 결정적 순간 총정리.`,
+    keywords: ["F1 역사", era.name, `F1 ${era.period}`, "F1 시대별", "포뮬러원"],
+    alternates: { canonical: `https://f1.324.ing/history/era/${era.slug}` },
+    openGraph: {
+      title: `${era.name} (${era.period}) | F1 by 324.ing`,
+      description: `${era.tagline} — F1 ${era.period} 시대의 챔피언, 드라이버, 결정적 순간 총정리.`,
+      url: `https://f1.324.ing/history/era/${era.slug}`,
+      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+    },
+    twitter: { card: "summary_large_image", title: `${era.name} (${era.period}) | F1 by 324.ing`, description: era.tagline },
   };
 }
 

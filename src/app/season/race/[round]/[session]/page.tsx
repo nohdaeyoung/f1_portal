@@ -105,7 +105,7 @@ export async function generateMetadata({
     title,
     description,
     openGraph: {
-      title: `${title} | PitLane`,
+      title: `${title} | F1 by 324.ing`,
       description,
       url: `https://f1.324.ing/season/race/${round}/${session}`,
       images: [{ url: "/og-default.png", width: 1200, height: 630 }],

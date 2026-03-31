@@ -1,11 +1,12 @@
-import { getDailyDigest, type NewsArticle } from "@/lib/api/news";
+import { getDailyDigest } from "@/lib/api/news";
 import { getAiDigest, type AiDigest } from "@/lib/api/ai-digest";
+import { NewsSearchFilter } from "@/components/news/NewsSearchFilter";
 
 export const metadata = {
   title: "F1 뉴스 & AI 브리핑",
   description: "Autosport, Motorsport.com 등 6개 매체의 F1 최신 뉴스와 Claude AI가 매일 정리하는 토픽별 브리핑.",
   openGraph: {
-    title: "F1 뉴스 & AI 브리핑 | PitLane",
+    title: "F1 뉴스 & AI 브리핑 | F1 by 324.ing",
     description: "Autosport, Motorsport.com 등 6개 매체의 F1 최신 뉴스와 Claude AI가 매일 정리하는 토픽별 브리핑.",
     url: "https://f1.324.ing/news",
     images: [{ url: "/og-default.png", width: 1200, height: 630 }],
@@ -165,64 +166,6 @@ function AiDigestSection({ digest }: { digest: AiDigest }) {
   );
 }
 
-// ─── Article card ─────────────────────────────────────────────
-
-function ArticleCard({ article, compact = false }: { article: NewsArticle; compact?: boolean }) {
-  const accent = SOURCE_COLORS[article.sourceName] ?? "#E8002D";
-  return (
-    <a
-      href={article.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex gap-3 bg-[#141420] border border-[#2D2D3A] rounded-xl p-4 hover:-translate-y-0.5 hover:border-[#E8002D]/30 transition-all group"
-    >
-      {/* Thumbnail */}
-      {article.image && !compact && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={article.image}
-          alt=""
-          loading="lazy"
-          className="shrink-0 w-24 h-16 sm:w-28 sm:h-[4.5rem] rounded-lg object-cover bg-[#2D2D3A]"
-        />
-      )}
-
-      {/* Text */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-white leading-snug group-hover:text-[#E8002D] transition-colors line-clamp-2">
-          {article.title}
-        </p>
-        {!compact && article.description && (
-          <p className="text-xs text-[#64748B] mt-1.5 line-clamp-2 leading-relaxed">
-            {article.description}
-          </p>
-        )}
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs font-semibold" style={{ color: accent }}>
-            {article.sourceName}
-          </span>
-          <span className="text-[#2D2D3A] text-xs">&middot;</span>
-          <span className="text-xs text-[#64748B]">{timeAgo(article.publishedAt)}</span>
-        </div>
-      </div>
-
-      <span className="text-[#64748B] group-hover:text-[#E8002D] transition-colors shrink-0 self-center hidden sm:block text-sm">
-        →
-      </span>
-    </a>
-  );
-}
-
-// ─── Topic icons ──────────────────────────────────────────────
-
-const TOPIC_ICONS: Record<string, string> = {
-  "레이스 & 퀄리파잉": "🏁",
-  "팀 & 기술": "🔧",
-  "드라이버 소식": "🪖",
-  "F1 비즈니스": "💼",
-  "기타 소식": "📰",
-};
-
 // ─── Page ─────────────────────────────────────────────────────
 
 export default async function NewsPage() {
@@ -288,76 +231,23 @@ export default async function NewsPage() {
           </div>
           <div className="bg-[#141420] border border-[#2D2D3A] rounded-2xl px-6 py-5 text-sm text-[#64748B] flex items-center gap-3">
             <span className="text-lg">🤖</span>
-            <span>
-              AI 요약을 불러오지 못했습니다.{" "}
-              <code className="text-xs bg-white/5 px-1.5 py-0.5 rounded">ANTHROPIC_API_KEY</code>{" "}
-              환경 변수를 설정하면 자동 활성화됩니다.
-            </span>
+            <span>AI 브리핑을 준비 중입니다. 잠시 후 다시 확인해 주세요.</span>
           </div>
         </section>
       )}
 
-      {/* ── Daily Digest (topic sections) ──────── */}
+      {/* ── Search + Articles ───────────────────── */}
       {hasDigest ? (
-        <section className="mb-14 space-y-10">
-          {digest.topics.map((topic) => (
-            <div key={topic.ko}>
-              {/* Topic header */}
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-lg">{TOPIC_ICONS[topic.ko] ?? "📰"}</span>
-                <h2 className="text-lg font-black text-white">{topic.ko}</h2>
-                <span className="text-xs font-bold text-[#E8002D] bg-[#E8002D]/10 px-2 py-0.5 rounded-full">
-                  {topic.articles.length}건
-                </span>
-              </div>
-              <div className="space-y-3">
-                {topic.articles.slice(0, 5).map((a) => (
-                  <ArticleCard key={a.id} article={a} />
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {/* Unclassified articles */}
-          {digest.others.length > 0 && (
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-lg">📰</span>
-                <h2 className="text-lg font-black text-white">기타 소식</h2>
-                <span className="text-xs font-bold text-[#64748B] bg-white/5 px-2 py-0.5 rounded-full">
-                  {digest.others.length}건
-                </span>
-              </div>
-              <div className="space-y-3">
-                {digest.others.slice(0, 4).map((a) => (
-                  <ArticleCard key={a.id} article={a} compact />
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
+        <NewsSearchFilter
+          topics={digest.topics}
+          others={digest.others}
+          recent={digest.recent}
+        />
       ) : (
         <div className="mb-14 bg-[#141420] border border-[#2D2D3A] rounded-xl p-8 text-center text-[#64748B]">
           오늘 기사를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
         </div>
       )}
-
-      {/* ── Divider ────────────────────────────── */}
-      <div className="flex items-center gap-4 mb-8">
-        <div className="flex-1 h-px bg-[#2D2D3A]" />
-        <span className="text-xs text-[#94A3B8] uppercase tracking-widest font-semibold">최신 뉴스 전체</span>
-        <div className="flex-1 h-px bg-[#2D2D3A]" />
-      </div>
-
-      {/* ── All Recent Articles ─────────────────── */}
-      <section className="space-y-3">
-        {digest.recent.map((a) => (
-          <ArticleCard key={a.id} article={a} compact />
-        ))}
-        {digest.recent.length === 0 && (
-          <p className="text-center text-[#64748B] py-10">뉴스를 불러올 수 없습니다.</p>
-        )}
-      </section>
     </div>
   );
 }

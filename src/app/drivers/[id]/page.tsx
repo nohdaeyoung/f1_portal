@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { drivers, getDriver, getTeam } from "@/data/f1-data";
 import { fetchDriverSeasonResults, fetchDriverHeadshot, fetchDriverCareerStats } from "@/lib/data/live";
 import { driverSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
+import { DriverCareerChart } from "@/components/f1/DriverCareerChart";
+import { DriverPositionChart } from "@/components/f1/DriverPositionChart";
 
 export async function generateStaticParams() {
   return drivers.map((d) => ({ id: d.id }));
@@ -20,10 +22,10 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     title,
     description,
     openGraph: {
-      title: `${title} | PitLane`,
+      title: `${title} | F1 by 324.ing`,
       description,
       url: `https://f1.324.ing/drivers/${id}`,
-      images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+      images: [{ url: `https://f1.324.ing/api/og/driver/${id}`, width: 1200, height: 630 }],
     },
     twitter: { card: "summary_large_image" },
   };
@@ -45,6 +47,22 @@ export default async function DriverDetailPage({
     fetchDriverHeadshot(driver.number),
     fetchDriverCareerStats(driver.id),
   ]);
+
+  // 2026 행이 없으면 raceResults에서 합성 (루키 등 Jolpica에 이력 없는 경우)
+  const has2026 = careerStats.some((s) => s.season === "2026");
+  const displayStats = (!has2026 && raceResults.length > 0)
+    ? [
+        {
+          season: "2026",
+          position: null,
+          team: team?.name ?? "",
+          points: raceResults.reduce((sum, r) => sum + r.points, 0),
+          wins: raceResults.filter((r) => r.position === 1).length,
+          poles: raceResults.filter((r) => r.grid === 1).length,
+        },
+        ...careerStats,
+      ]
+    : careerStats;
 
   const stats = [
     { label: "우승", value: driver.wins },
@@ -121,6 +139,12 @@ export default async function DriverDetailPage({
             className="mt-4 w-24 h-1 rounded-full"
             style={{ backgroundColor: driver.teamColor }}
           />
+          <Link
+            href={`/compare?a=${driver.id}`}
+            className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-[#141420] border border-[#2D2D3A] rounded-lg text-sm text-[#94A3B8] hover:text-white hover:border-[#3D3D4A] transition-colors"
+          >
+            이 드라이버와 비교 →
+          </Link>
         </div>
       </section>
 
@@ -256,9 +280,15 @@ export default async function DriverDetailPage({
       </section>
 
       {/* Career Stats by Year */}
-      {careerStats.length > 0 && (
+      {displayStats.length > 0 && (
         <section className="mt-12 pt-8 border-t border-[#2D2D3A]">
           <h2 className="text-xl font-bold text-white mb-6">연도별 커리어 통계</h2>
+          <div className="mb-4">
+            <DriverCareerChart stats={displayStats} teamColor={driver.teamColor} />
+          </div>
+          <div className="mb-6">
+            <DriverPositionChart stats={displayStats} teamColor={driver.teamColor} />
+          </div>
           <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -273,9 +303,14 @@ export default async function DriverDetailPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {careerStats.map((s) => (
+                  {displayStats.map((s) => (
                     <tr key={s.season} className="border-b border-[#2D2D3A]/50 hover:bg-white/[0.02] transition-colors">
-                      <td className="px-4 py-3 font-mono text-[#64748B]">{s.season}</td>
+                      <td className="px-4 py-3 font-mono text-[#64748B]">
+                        {s.season}
+                        {s.season === "2026" && s.position === null && (
+                          <span className="ml-1 text-[10px] text-[#E8002D] font-bold">●</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-white text-sm">{s.team}</td>
                       <td className="px-4 py-3 text-center">
                         <span

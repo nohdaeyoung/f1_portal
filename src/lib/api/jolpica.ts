@@ -190,7 +190,7 @@ export async function getRaceResults(
 ) {
   const data = await fetchJolpica<{
     RaceTable: { season: string; round: string; Races: JolpicaRace[] };
-  }>(`/${season}/${round}/results`, 300);
+  }>(`/${season}/${round}/results?limit=100`, 300);
   return data.MRData.RaceTable.Races[0];
 }
 
@@ -215,6 +215,23 @@ export async function getDriverStandings(season: string | number = "current") {
     };
   }>(`/${season}/driverstandings`, 300);
   return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings ?? [];
+}
+
+/** Driver standings at a specific round */
+export async function getDriverStandingsAtRound(season: string | number, round: number) {
+  try {
+    const data = await fetchJolpica<{
+      StandingsTable: {
+        StandingsLists: {
+          round: string;
+          DriverStandings: JolpicaStanding[];
+        }[];
+      };
+    }>(`/${season}/${round}/driverstandings`, 3600);
+    return data.MRData.StandingsTable.StandingsLists[0]?.DriverStandings ?? [];
+  } catch {
+    return [];
+  }
 }
 
 /** Constructor standings */
@@ -247,7 +264,7 @@ export async function getQualifying(
         QualifyingResults: JolpicaQualifying[];
       }[];
     };
-  }>(`/${season}/${round}/qualifying`, 300);
+  }>(`/${season}/${round}/qualifying?limit=100`, 300);
   return data.MRData.RaceTable.Races[0]?.QualifyingResults ?? [];
 }
 
@@ -258,7 +275,7 @@ export async function getSprintResults(
 ) {
   const data = await fetchJolpica<{
     RaceTable: { Races: JolpicaRace[] };
-  }>(`/${season}/${round}/sprint`, 300);
+  }>(`/${season}/${round}/sprint?limit=100`, 300);
   return data.MRData.RaceTable.Races[0];
 }
 
@@ -320,7 +337,7 @@ export async function getSeasons() {
 export async function getCircuitHistory(jolpicaCircuitId: string, limit = 30) {
   const data = await fetchJolpica<{
     RaceTable: { Races: JolpicaRace[] };
-  }>(`/circuits/${jolpicaCircuitId}/results/1?limit=${limit}`, 86400);
+  }>(`/circuits/${jolpicaCircuitId}/results/1?limit=${limit}`, 3600);
   return data.MRData.RaceTable.Races;
 }
 
@@ -334,77 +351,52 @@ export interface DriverSeasonSummary {
 
 /**
  * Driver career stats by season.
- * 1) Race results (paginated, 1-5 requests) → wins, points, team
- * 2) Standings per season (batched 3 at a time) → championship position
+ * Strategy: per-season driverstandings (1 call/season) — accurate, rate-limit-safe.
+ * 1) Fetch first race to determine debut year
+ * 2) Batch-fetch /{year}/drivers/{id}/driverstandings for debut→current year
+ *    → each call returns position, wins, points, team in one shot
  */
 export async function getDriverHistory(jolpicaDriverId: string): Promise<DriverSeasonSummary[]> {
-  // ── Step 1: race results ─────────────────────────────────────
+  // ── Step 1: debut year ────────────────────────────────────────
   const first = await fetchJolpica<{
     RaceTable: { Races: JolpicaRace[] };
-  }>(`/drivers/${jolpicaDriverId}/results?limit=100&offset=0`, 86400);
+  }>(`/drivers/${jolpicaDriverId}/results?limit=1&offset=0`, 3600);
 
   const total = parseInt(first.MRData.total);
-  let races = first.MRData.RaceTable.Races;
+  if (total === 0) return [];
 
-  if (total > 100) {
-    const offsets = Array.from(
-      { length: Math.min(Math.ceil((total - 100) / 100), 4) },
-      (_, i) => (i + 1) * 100
-    );
-    const pages = await Promise.all(
-      offsets.map((offset) =>
-        fetchJolpica<{ RaceTable: { Races: JolpicaRace[] } }>(
-          `/drivers/${jolpicaDriverId}/results?limit=100&offset=${offset}`,
-          86400
-        )
-          .then((d) => d.MRData.RaceTable.Races)
-          .catch(() => [] as JolpicaRace[])
-      )
-    );
-    races = races.concat(...pages);
-  }
+  const debutYear = parseInt(first.MRData.RaceTable.Races[0]?.season ?? "2019");
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - debutYear + 1 }, (_, i) =>
+    String(debutYear + i)
+  );
 
-  // Aggregate wins, points, team per season
-  const byYear: Record<string, { wins: number; points: number; team: string }> = {};
-  for (const race of races) {
-    const result = race.Results?.[0];
-    if (!result) continue;
-    if (!byYear[race.season]) byYear[race.season] = { wins: 0, points: 0, team: "" };
-    if (result.position === "1") byYear[race.season].wins++;
-    byYear[race.season].points += parseFloat(result.points) || 0;
-    byYear[race.season].team = result.Constructor.name;
-  }
-
-  const seasons = Object.keys(byYear);
-
-  // ── Step 2: championship position (batched, 3 at a time) ─────
-  const positions = await batchedParallel(
-    seasons,
+  // ── Step 2: per-season standings (batched 3 at a time) ───────
+  const results = await batchedParallel(
+    years,
     (year) =>
       fetchJolpica<{
         StandingsTable: { StandingsLists: Array<{ DriverStandings: JolpicaStanding[] }> };
-      }>(`/${year}/drivers/${jolpicaDriverId}/driverstandings`, 86400)
+      }>(`/${year}/drivers/${jolpicaDriverId}/driverstandings`, 3600)
         .then((d) => {
           const list = d.MRData.StandingsTable.StandingsLists[0];
-          return list ? parseInt(list.DriverStandings[0].position) : null;
+          if (!list) return null;
+          const ds = list.DriverStandings[0];
+          const pos = parseInt(ds.position);
+          return {
+            season: year,
+            position: isNaN(pos) ? null : pos,
+            wins: parseInt(ds.wins) || 0,
+            points: parseFloat(ds.points) || 0,
+            team: ds.Constructors?.[0]?.name ?? "",
+          };
         })
         .catch(() => null),
     3
   );
 
-  const positionBySeason: Record<string, number | null> = {};
-  seasons.forEach((year, i) => {
-    positionBySeason[year] = positions[i];
-  });
-
-  return seasons
-    .map((season) => ({
-      season,
-      position: positionBySeason[season],
-      wins: byYear[season].wins,
-      points: byYear[season].points,
-      team: byYear[season].team,
-    }))
+  return results
+    .filter((s): s is DriverSeasonSummary => s !== null)
     .sort((a, b) => b.season.localeCompare(a.season));
 }
 
@@ -412,7 +404,7 @@ export async function getDriverHistory(jolpicaDriverId: string): Promise<DriverS
 export async function getDriverPoles(jolpicaDriverId: string) {
   const data = await fetchJolpica<{
     RaceTable: { Races: Array<{ season: string; round: string }> };
-  }>(`/drivers/${jolpicaDriverId}/qualifying/1?limit=300`, 86400);
+  }>(`/drivers/${jolpicaDriverId}/qualifying/1?limit=300`, 3600);
   return data.MRData.RaceTable.Races;
 }
 

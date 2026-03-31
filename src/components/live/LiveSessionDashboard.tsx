@@ -395,20 +395,39 @@ export default function LiveSessionDashboard() {
     fetchRealtime(sessionKey);
     fetchNearRealtime(sessionKey);
 
-    // 실시간 폴링 (4초)
-    const realtimeId = setInterval(() => fetchRealtime(sessionKey), 4_000);
-    // 준실시간 폴링 (15초)
-    const nearId = setInterval(() => fetchNearRealtime(sessionKey), 15_000);
+    // 실시간 폴링 (4초) — 이전 요청 완료 후 재시작
+    let realtimeTimer: ReturnType<typeof setTimeout>;
+    const scheduleRealtime = () => {
+      realtimeTimer = setTimeout(async () => {
+        await fetchRealtime(sessionKey);
+        scheduleRealtime();
+      }, 4_000);
+    };
+    scheduleRealtime();
+
+    // 준실시간 폴링 (15초) — 이전 요청 완료 후 재시작
+    let nearTimer: ReturnType<typeof setTimeout>;
+    const scheduleNear = () => {
+      nearTimer = setTimeout(async () => {
+        await fetchNearRealtime(sessionKey);
+        scheduleNear();
+      }, 15_000);
+    };
+    scheduleNear();
 
     return () => {
-      clearInterval(realtimeId);
-      clearInterval(nearId);
+      clearTimeout(realtimeTimer);
+      clearTimeout(nearTimer);
     };
   }, [sessionKey, fetchRealtime, fetchNearRealtime]);
 
   const remaining = useSessionCountdown(sessionDateEnd, isActive);
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="flex items-center justify-center py-12 text-[#475569] text-sm">
+      <span className="animate-pulse">세션 정보를 불러오는 중...</span>
+    </div>
+  );
   if (!sessionKey) return null;
 
   const isRace = sessionType === "Race" || sessionType === "Sprint";
@@ -422,7 +441,7 @@ export default function LiveSessionDashboard() {
     setToast(msg);
     setTimeout(() => setToast(null), 6000);
     if (typeof Notification !== "undefined" && notifPermRef.current === "granted") {
-      new Notification("PitLane F1 — 데이터 수집 완료", {
+      new Notification("F1 by 324.ing — 데이터 수집 완료", {
         body: msg,
         icon: "/favicon.ico",
       });

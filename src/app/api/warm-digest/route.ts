@@ -94,7 +94,7 @@ async function sendTelegram(digest: AiDigest): Promise<void> {
 
 function isAuthorized(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) return true; // 로컬 개발 환경 (CRON_SECRET 미설정)
+  if (!cronSecret) return false;
   const authHeader = (request as Request & { headers: Headers }).headers.get("authorization");
   return authHeader === `Bearer ${cronSecret}`;
 }

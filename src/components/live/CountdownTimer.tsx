@@ -17,9 +17,10 @@ function pad(n: number) {
 interface Props {
   targetIso: string;
   label?: string;
+  compact?: boolean;
 }
 
-export default function CountdownTimer({ targetIso, label = "세션까지" }: Props) {
+export default function CountdownTimer({ targetIso, label = "세션까지", compact = false }: Props) {
   const [rem, setRem] = useState(() => getRemaining(targetIso));
 
   useEffect(() => {
@@ -28,6 +29,17 @@ export default function CountdownTimer({ targetIso, label = "세션까지" }: Pr
   }, [targetIso]);
 
   if (rem.total <= 0) return null;
+
+  if (compact) {
+    return (
+      <div className="text-right shrink-0">
+        <span className="block text-[20px] font-bold text-white mb-0.5">{label}</span>
+        <span className="block font-black text-[#94A3B8] tabular-nums text-xl leading-none">
+          {pad(rem.h)}:{pad(rem.m)}:{pad(rem.s)}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="text-right shrink-0">

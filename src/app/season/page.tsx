@@ -126,7 +126,8 @@ function NextRaceSchedule({ race }: { race: RaceCalendar }) {
 
 function RaceCalendarSection({ races }: { races: RaceCalendar[] }) {
   const completedCount = races.filter((r) => r.status === "completed").length;
-  const totalCount = races.length;
+  const cancelledCount = races.filter((r) => r.status === "cancelled").length;
+  const totalCount = races.length - cancelledCount;
 
   return (
     <section>
@@ -151,6 +152,7 @@ function RaceCalendarSection({ races }: { races: RaceCalendar[] }) {
           const circuit = getCircuit(race.circuitId);
           const isNext = race.status === "next";
           const isCompleted = race.status === "completed";
+          const isCancelled = race.status === "cancelled";
 
           return (
             <Link
@@ -159,7 +161,9 @@ function RaceCalendarSection({ races }: { races: RaceCalendar[] }) {
               className={[
                 "flex items-center gap-3 rounded-lg px-4 py-3 border transition-all group",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-f1-red focus-visible:ring-offset-1 focus-visible:ring-offset-bg-base",
-                isNext
+                isCancelled
+                  ? "bg-transparent border-border-subtle/30 opacity-45 hover:opacity-60"
+                  : isNext
                   ? "bg-f1-red/8 border-f1-red/25 hover:bg-f1-red/12"
                   : isCompleted
                   ? "bg-transparent border-border-subtle/50 hover:bg-white/[0.02] opacity-70 hover:opacity-100"
@@ -168,7 +172,7 @@ function RaceCalendarSection({ races }: { races: RaceCalendar[] }) {
             >
               {/* Round + status dot */}
               <div className="w-10 shrink-0 flex flex-col items-center gap-0.5">
-                <span className="font-display text-[10px] font-bold tracking-widest uppercase text-text-disabled">
+                <span className={`font-display text-[10px] font-bold tracking-widest uppercase ${isCancelled ? "line-through text-text-disabled/60" : "text-text-disabled"}`}>
                   R{String(race.round).padStart(2, "0")}
                 </span>
                 {isNext && (
@@ -177,19 +181,22 @@ function RaceCalendarSection({ races }: { races: RaceCalendar[] }) {
                 {isCompleted && (
                   <span className="w-1.5 h-1.5 rounded-full bg-status-active/60" aria-label="완료" />
                 )}
+                {isCancelled && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#EF4444]/60" aria-label="취소" />
+                )}
               </div>
 
               {/* Divider */}
-              <div className={`w-px self-stretch ${isNext ? "bg-f1-red/30" : "bg-border-subtle"}`} aria-hidden="true" />
+              <div className={`w-px self-stretch ${isCancelled ? "bg-[#EF4444]/20" : isNext ? "bg-f1-red/30" : "bg-border-subtle"}`} aria-hidden="true" />
 
               {/* Race name + circuit */}
               <div className="flex-1 min-w-0">
                 <span className={`font-display text-sm font-bold tracking-wide block truncate transition-colors ${
-                  isNext ? "text-white" : isCompleted ? "text-text-secondary group-hover:text-white" : "text-text-secondary"
+                  isCancelled ? "line-through text-text-disabled/60" : isNext ? "text-white" : isCompleted ? "text-text-secondary group-hover:text-white" : "text-text-secondary"
                 }`}>
                   {race.koreanName}
                 </span>
-                <span className="font-mono text-[10px] text-text-disabled block truncate">
+                <span className={`font-mono text-[10px] block truncate ${isCancelled ? "line-through text-text-disabled/50" : "text-text-disabled"}`}>
                   {circuit?.koreanName}
                   <span className="mx-1.5">·</span>
                   {fmtDateRange(race.date, race.sessions?.fp1)}
@@ -198,7 +205,11 @@ function RaceCalendarSection({ races }: { races: RaceCalendar[] }) {
 
               {/* Winner / status */}
               <div className="text-right shrink-0">
-                {isCompleted && race.winner ? (
+                {isCancelled ? (
+                  <span className="font-display text-[10px] font-bold text-[#EF4444] tracking-widest uppercase">
+                    CANCELLED
+                  </span>
+                ) : isCompleted && race.winner ? (
                   <span className="font-display text-sm font-bold text-[#FCD34D] tracking-wide">
                     {race.winner.split(" ").slice(-1)[0].toUpperCase()}
                   </span>

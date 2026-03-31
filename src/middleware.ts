@@ -19,8 +19,8 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // /api/admin/* 보호 (로그인 API 제외)
-  const publicAdminApis = ["/api/admin/login", "/api/admin/google-login"];
+  // /api/admin/* 보호 (로그인 API 및 자체 Bearer 토큰 인증 API 제외)
+  const publicAdminApis = ["/api/admin/login", "/api/admin/google-login", "/api/admin/seo-publish"];
   if (pathname.startsWith("/api/admin/") && !publicAdminApis.includes(pathname)) {
     if (!isAuthenticated(request)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -89,7 +89,8 @@ async function of1get<T>(path: string, params: Record<string, string | number> =
 
 async function findSessionKey(sessionType: string, sessionDateIso: string): Promise<number | null> {
   const year = new Date(sessionDateIso).getFullYear();
-  const sessions = await of1get<OF1Session>("/sessions", { year });
+  // 세션 목록은 짧게 캐시 (60초) — 세션 미발견 시 빈 캐시가 오래 남는 문제 방지
+  const sessions = await of1get<OF1Session>("/sessions", { year }, 60);
   const targetDate = sessionDateIso.slice(0, 10);
   const names = SESSION_CONFIG[sessionType]?.of1Names ?? [];
   const match = sessions.find(
@@ -477,16 +478,25 @@ async function SessionDataView({
   const isQualType = session === "qualifying" || session === "sq";
   const isFpType   = session === "fp1" || session === "fp2" || session === "fp3";
 
+  // 1차: 결과 먼저 확인 (빈 응답이면 짧은 캐시로 재시도 방지)
+  const resultsTtl = ttl;
+  const initialResults = sk
+    ? await of1get<OF1Result>("/session_result", { session_key: sk }, resultsTtl)
+    : [];
+
+  // 결과가 있을 때만 나머지 데이터를 긴 ttl로 가져옴, 없으면 짧은 ttl(60초) 사용
+  const dataTtl = initialResults.length > 0 ? ttl : 60;
+
   const [results, drivers, laps, stints, pits, raceControl, weatherArr, grid] = sk
     ? await Promise.all([
-        of1get<OF1Result>  ("/session_result", { session_key: sk }, ttl),
-        of1get<OF1Driver>  ("/drivers",        { session_key: sk }, ttl),
-        of1get<OF1Lap>     ("/laps",           { session_key: sk }, ttl),
-        of1get<OF1Stint>   ("/stints",         { session_key: sk }, ttl),
-        of1get<OF1Pit>     ("/pit",            { session_key: sk }, ttl),
-        of1get<OF1RC>      ("/race_control",   { session_key: sk }, ttl),
-        of1get<OF1Weather> ("/weather",        { session_key: sk }, ttl),
-        of1get<OF1Grid>    ("/starting_grid",  { session_key: sk }, ttl),
+        Promise.resolve(initialResults),
+        of1get<OF1Driver>  ("/drivers",        { session_key: sk }, dataTtl),
+        of1get<OF1Lap>     ("/laps",           { session_key: sk }, dataTtl),
+        of1get<OF1Stint>   ("/stints",         { session_key: sk }, dataTtl),
+        of1get<OF1Pit>     ("/pit",            { session_key: sk }, dataTtl),
+        of1get<OF1RC>      ("/race_control",   { session_key: sk }, dataTtl),
+        of1get<OF1Weather> ("/weather",        { session_key: sk }, dataTtl),
+        of1get<OF1Grid>    ("/starting_grid",  { session_key: sk }, dataTtl),
       ])
     : [[], [], [], [], [], [], [], []];
 
@@ -1069,7 +1079,8 @@ export default async function GrandPrixPage({
   if (!race) notFound();
 
   const circuit = getCircuit(race.circuitId);
-  const isCompleted = race.status === "completed" || new Date(race.date).getTime() < Date.now();
+  const isCancelled = race.status === "cancelled";
+  const isCompleted = !isCancelled && (race.status === "completed" || new Date(race.date).getTime() < Date.now());
   const isUpcoming = race.status === "upcoming" || race.status === "next";
 
   // 완료된 레이스는 결과 데이터 병렬 로드 (개요 탭에서 사용)
@@ -1139,6 +1150,11 @@ export default async function GrandPrixPage({
                 {race.sessions?.isSprint && (
                   <span className="text-xs font-bold text-[#FF6700] bg-[#FF6700]/10 border border-[#FF6700]/30 px-2 py-0.5 rounded-full">
                     스프린트 주말
+                  </span>
+                )}
+                {isCancelled && (
+                  <span className="text-xs font-bold text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/30 px-2 py-0.5 rounded-full">
+                    취소됨
                   </span>
                 )}
                 {isCompleted && (

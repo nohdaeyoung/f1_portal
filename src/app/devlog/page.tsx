@@ -4,8 +4,8 @@ import { devlogHistory, formatDevlogDate, TYPE_META } from "@/data/devlog";
 export const revalidate = 3600; // 매시간 ISR (cron이 7am에 강제 갱신)
 
 export const metadata = {
-  title: "개발 노트 | PitLane",
-  description: "PitLane F1 포털 개발 히스토리 및 변경사항 기록",
+  title: "개발 노트 | F1 by 324.ing",
+  description: "F1 by 324.ing 개발 히스토리 및 변경사항 기록",
 };
 
 // ─── GitHub 커밋 → DevlogDay 병합 ────────────────────────────
@@ -97,7 +97,7 @@ export default async function DevlogPage() {
           개발 노트
         </h1>
         <p className="text-[#64748B] mt-2 text-sm">
-          PitLane F1 포털 개발 히스토리 — 매일 오전 7시 자동 갱신
+          F1 by 324.ing 개발 히스토리 — 매일 오전 7시 자동 갱신
         </p>
         <div className="mt-4 w-16 h-1 bg-[#E8002D] rounded-full" />
 
@@ -235,7 +235,7 @@ export default async function DevlogPage() {
             <span className="text-[10px]">🏎</span>
           </div>
           <p className="text-xs text-[#64748B] font-mono -mt-0.5">
-            2026년 3월 — PitLane 프로젝트 시작
+            2026년 3월 — F1 by 324.ing 프로젝트 시작
           </p>
         </div>
       </div>

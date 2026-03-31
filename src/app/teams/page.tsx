@@ -5,7 +5,7 @@ export const metadata = {
   title: "F1 팀 아카이브",
   description: "2026 시즌 F1 컨스트럭터 11개 팀의 역사, 드라이버 라인업, 챔피언십 통계를 확인하세요.",
   openGraph: {
-    title: "F1 팀 아카이브 | PitLane",
+    title: "F1 팀 아카이브 | F1 by 324.ing",
     description: "2026 시즌 F1 컨스트럭터 11개 팀의 역사, 드라이버 라인업, 챔피언십 통계를 확인하세요.",
     url: "https://f1.324.ing/teams",
     images: [{ url: "/og-default.png", width: 1200, height: 630 }],

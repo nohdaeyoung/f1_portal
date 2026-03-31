@@ -1,9 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { allSections } from "@/data/regs";
 
-export const metadata = {
-  title: "2026 F1 규정 | PitLane",
-  description: "FIA 2026 F1 일반·스포팅·기술·파이넨셜·운영 규정 한국어 번역",
+export const metadata: Metadata = {
+  title: "2026 F1 규정",
+  description: "FIA 2026 F1 일반·스포팅·기술·파이낸셜·운영 규정 한국어 번역. Section A·B·C·D·F 전문.",
+  keywords: ["F1 규정", "FIA 규정", "2026 F1 규정", "F1 스포팅 규정", "F1 기술 규정", "F1 재정 규정"],
+  alternates: { canonical: "https://f1.324.ing/info/regulations" },
+  openGraph: {
+    title: "2026 F1 규정 | F1 by 324.ing",
+    description: "FIA 2026 F1 일반·스포팅·기술·파이낸셜·운영 규정 한국어 번역. Section A·B·C·D·F 전문.",
+    url: "https://f1.324.ing/info/regulations",
+    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
+  },
+  twitter: { card: "summary_large_image", title: "2026 F1 규정 | F1 by 324.ing", description: "FIA 2026 F1 규정 한국어 번역 — Section A·B·C·D·F" },
 };
 
 export default function RegulationsPage() {

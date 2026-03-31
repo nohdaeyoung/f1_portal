@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { teams, getTeam, getTeamDrivers } from "@/data/f1-data";
 import { fetchTeamHistory } from "@/lib/data/live";
 import { teamSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
+import { TeamHistoryChart } from "@/components/f1/TeamHistoryChart";
 
 export async function generateStaticParams() {
   return teams.map((t) => ({ id: t.id }));
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     title,
     description,
     openGraph: {
-      title: `${title} | PitLane`,
+      title: `${title} | F1 by 324.ing`,
       description,
       url: `https://f1.324.ing/teams/${id}`,
       images: [{ url: "/og-default.png", width: 1200, height: 630 }],
@@ -220,6 +221,11 @@ export default async function TeamDetailPage({
       {history.length > 0 && (
         <section className="pt-8 border-t border-[#2D2D3A]">
           <h2 className="text-xl font-bold text-white mb-6">연도별 컨스트럭터 순위</h2>
+          {history.length >= 2 && (
+            <div className="mb-6">
+              <TeamHistoryChart history={history} teamColor={team.primaryColor} />
+            </div>
+          )}
           <div className="bg-[#141420] border border-[#2D2D3A] rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

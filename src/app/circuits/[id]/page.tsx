@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { circuits, getCircuit } from "@/data/f1-data";
+import { circuits, getCircuit, calendar } from "@/data/f1-data";
 import { fetchCircuitWinners } from "@/lib/data/live";
 import { TrackMap } from "./TrackMap";
 import { circuitSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
+import CircuitCornerList from "@/components/replay/CircuitCornerList";
+import { getCornersByCircuitId } from "@/data/circuit-corners";
+import LapRecordTrend from "@/components/circuit/LapRecordTrend";
+
+export const revalidate = 3600; // 1시간마다 재생성
 
 export async function generateStaticParams() {
   return circuits.map((c) => ({ id: c.id }));
@@ -19,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     title,
     description,
     openGraph: {
-      title: `${title} | PitLane`,
+      title: `${title} | F1 by 324.ing`,
       description,
       url: `https://f1.324.ing/circuits/${id}`,
       images: [{ url: "/og-default.png", width: 1200, height: 630 }],
@@ -38,6 +43,7 @@ export default async function CircuitDetailPage({
   if (!circuit) notFound();
 
   const winners = await fetchCircuitWinners(id);
+  const calendarEntry = calendar.find((r) => r.circuitId === id);
 
   const specs = [
     { l: "트랙 길이", v: `${circuit.length} km` },
@@ -78,13 +84,25 @@ export default async function CircuitDetailPage({
       {/* Hero */}
       <section className="mb-12">
         <div className="text-4xl mb-4">{circuit.flag}</div>
-        <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight">
-          {circuit.koreanName}
-        </h1>
-        <p className="text-lg text-[#64748B] mt-2">{circuit.name}</p>
-        <p className="text-sm text-[#64748B] mt-1">
-          {circuit.city}, {circuit.country}
-        </p>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight">
+              {circuit.koreanName}
+            </h1>
+            <p className="text-lg text-[#64748B] mt-2">{circuit.name}</p>
+            <p className="text-sm text-[#64748B] mt-1">
+              {circuit.city}, {circuit.country}
+            </p>
+          </div>
+          {calendarEntry && (
+            <Link
+              href={`/season/race/${calendarEntry.round}/replay`}
+              className="shrink-0 flex items-center gap-2 px-4 py-2 bg-[#E8002D]/10 hover:bg-[#E8002D]/20 border border-[#E8002D]/30 rounded-xl text-sm text-[#E8002D] font-bold transition-colors"
+            >
+              ▶ 레이스 리플레이
+            </Link>
+          )}
+        </div>
         <div className="mt-4 w-24 h-1 bg-[#E8002D] rounded-full" />
       </section>
 
@@ -151,10 +169,23 @@ export default async function CircuitDetailPage({
         </div>
       </section>
 
+      {/* Lap Record Trend */}
+      <section className="mb-12">
+        <LapRecordTrend gpName={circuit.name} />
+      </section>
+
       {/* Track Map */}
       <section className="mb-12">
         <h2 className="text-xl font-bold text-white mb-6">트랙 맵</h2>
         <TrackMap circuitId={circuit.id} />
+        {(() => {
+          const corners = getCornersByCircuitId(circuit.id);
+          return corners.length > 0 ? (
+            <div className="mt-4">
+              <CircuitCornerList corners={corners} />
+            </div>
+          ) : null;
+        })()}
       </section>
 
       {/* Meta */}

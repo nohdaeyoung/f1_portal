@@ -5,7 +5,7 @@ export const metadata = {
   title: "F1 서킷 가이드",
   description: "2026 시즌 F1 그랑프리가 열리는 24개 서킷의 트랙 정보, 랩 레코드, 특징을 확인하세요.",
   openGraph: {
-    title: "F1 서킷 가이드 | PitLane",
+    title: "F1 서킷 가이드 | F1 by 324.ing",
     description: "2026 시즌 F1 그랑프리가 열리는 24개 서킷의 트랙 정보, 랩 레코드, 특징을 확인하세요.",
     url: "https://f1.324.ing/circuits",
     images: [{ url: "/og-default.png", width: 1200, height: 630 }],

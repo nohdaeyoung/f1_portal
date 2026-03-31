@@ -1,64 +1,72 @@
 /**
  * AI News Digest Generator
  *
- * RSS 피드에서 수집한 F1 기사를 Claude API로 분석해
- * 한국어 심층 브리핑을 생성한다.
- *
- * 매일 오전 7시 (ISR / cron revalidate) 갱신을 기준으로 설계.
- * 호출 당 Claude Sonnet 4.6 사용 → 품질 우선.
+ * 매일 KST 오전 6시 갱신. 소스 기사는 갱신 기준 23시간 이내.
+ * Claude Haiku 4.5 사용.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { unstable_cache } from "next/cache";
-import { getDailyDigest, type NewsArticle } from "./news";
+import { getF1News, type NewsArticle } from "./news";
+
+// ─── KST helpers ──────────────────────────────────────────────
+
+function kstDateStr(d: Date): string {
+  return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+}
+
+function kstHour(): number {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" })).getHours();
+}
+
+/**
+ * 캐시 키: KST 6시 이전이면 어제 날짜, 6시 이후면 오늘 날짜.
+ * → 하루 1회 생성(6시 이후 첫 요청), 다음날 6시까지 동일 캐시 제공.
+ */
+function cacheKey(): string {
+  const now = new Date();
+  if (kstHour() < 6) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return kstDateStr(yesterday);
+  }
+  return kstDateStr(now);
+}
+
+function dateLabel(): string {
+  const d = new Date();
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+}
 
 // ─── Types ────────────────────────────────────────────────────
 
 export interface AiDigestBullet {
   emoji: string;
-  title: string;       // 토픽 제목 (15자 이내)
-  text: string;        // 한국어 상세 요약 (80자 이내)
-  context?: string;    // 배경 맥락 한 줄 (선택)
-  sourceName?: string; // 출처 매체
-  sourceUrl?: string;  // 원문 기사 URL
+  title: string;
+  text: string;
+  context?: string;
+  sourceName?: string;
+  sourceUrl?: string;
 }
 
 export interface AiDigest {
-  generatedAt: string;        // ISO UTC
-  dateLabel: string;          // "2026년 3월 4일 (어제)"
-  headline: string;           // 하루 요약 핵심 한 문장
-  summary: string;            // 3~5문장 심층 요약
-  bullets: AiDigestBullet[];  // 주요 토픽 4~6개
-  editorNote: string;         // 편집장 한마디 — 의견·전망 포함
-  watchPoints: string[];      // 이번 주 관전 포인트 2~3개
-  hotTopics: string[];        // 키워드 태그 4~6개
-  articleCount: number;       // 분석한 기사 수
+  generatedAt: string;
+  dateLabel: string;
+  headline: string;
+  summary: string;
+  bullets: AiDigestBullet[];
+  editorNote: string;
+  watchPoints: string[];
+  hotTopics: string[];
+  articleCount: number;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────
+// ─── Article helpers ──────────────────────────────────────────
 
-function yesterdayLabel(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (어제)`;
+function isWithin23h(iso: string): boolean {
+  return Date.now() - new Date(iso).getTime() < 23 * 3_600_000;
 }
 
-function isYesterday(iso: string): boolean {
-  const articleDate = new Date(iso);
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return (
-    articleDate.getFullYear() === yesterday.getFullYear() &&
-    articleDate.getMonth() === yesterday.getMonth() &&
-    articleDate.getDate() === yesterday.getDate()
-  );
-}
-
-function isWithin(iso: string, hours: number): boolean {
-  return Date.now() - new Date(iso).getTime() < hours * 3_600_000;
-}
-
-/** 기사 목록에서 프롬프트용 텍스트 빌드 */
 function buildArticleList(articles: NewsArticle[]): string {
   return articles
     .slice(0, 35)
@@ -71,7 +79,7 @@ function buildArticleList(articles: NewsArticle[]): string {
     .join("\n\n");
 }
 
-// ─── Claude API Call ─────────────────────────────────────────
+// ─── Claude API ───────────────────────────────────────────────
 
 const SYSTEM_PROMPT = `당신은 F1 전문 한국어 저널리스트이자 수석 편집장입니다.
 영문 F1 기사들을 심층 분석해 한국 F1 팬을 위한 고품질 일일 브리핑을 작성하세요.
@@ -87,8 +95,8 @@ const SYSTEM_PROMPT = `당신은 F1 전문 한국어 저널리스트이자 수�
       "title": "토픽 제목 (15자 이내)",
       "text": "핵심 내용 요약 (최대 80자, 팩트+의미 포함)",
       "context": "배경 맥락이나 이유 한 줄 (선택, 최대 60자)",
-      "sourceName": "출처 매체명",
-      "sourceUrl": "해당 기사 원문 URL (입력 목록에서 가져올 것)"
+      "sourceName": "출처 매체명 (원문 영어 그대로)",
+      "sourceUrl": "반드시 입력 목록의 URL 필드에서 그대로 복사할 것 — 생략 불가"
     }
   ],
   "editorNote": "편집장 시각의 분석·의견·전망 2~3문장. '이번 소식이 시즌 전체에 어떤 의미인가', '팬이 주목해야 할 이유'를 담을 것. 객관적 팩트를 넘어 인사이트를 제공.",
@@ -104,145 +112,67 @@ const SYSTEM_PROMPT = `당신은 F1 전문 한국어 저널리스트이자 수�
 - bullets는 4~6개, 중요도 순으로 배치
 - hotTopics는 4~6개 단어/짧은 구절
 - editorNote는 팬의 감정·드라마·역사적 맥락을 살린 생동감 있는 문체로
-- 출처 이름은 원문 영어 그대로 유지`;
+- 출처 이름은 원문 영어 그대로 유지
+- sourceUrl은 각 bullet마다 반드시 포함 (입력 목록 URL을 그대로 복사, URL을 변경하거나 생략하지 말 것)`;
 
-async function callClaude(articleList: string): Promise<Omit<AiDigest, "generatedAt" | "dateLabel" | "articleCount"> | null> {
+async function callClaude(
+  articleList: string
+): Promise<Omit<AiDigest, "generatedAt" | "dateLabel" | "articleCount"> | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    console.warn("[ai-digest] ANTHROPIC_API_KEY 미설정 → 데모 다이제스트 사용");
+    console.warn("[ai-digest] ANTHROPIC_API_KEY 미설정");
     return null;
   }
 
   const client = new Anthropic({ apiKey });
-
   try {
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      messages: [
-        {
-          role: "user",
-          content: `다음은 오늘의 F1 영문 기사 목록입니다. 심층 분석 후 한국어 브리핑 JSON을 작성하세요.\n\n${articleList}`,
-        },
-      ],
-      system: SYSTEM_PROMPT,
-    });
+    const message = await Promise.race([
+      client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 4096,
+        messages: [{ role: "user", content: `다음은 최근 23시간 F1 영문 기사 목록입니다. 심층 분석 후 한국어 브리핑 JSON을 작성하세요.\n\n${articleList}` }],
+        system: SYSTEM_PROMPT,
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Claude API timeout 60s")), 60_000)
+      ),
+    ]);
 
     const raw = message.content[0].type === "text" ? message.content[0].text : "";
-    // 마크다운 코드 블록 제거 후 첫 번째 JSON 객체 추출 (더 robust한 파싱)
     const stripped = raw.replace(/^```json\s*/im, "").replace(/\s*```\s*$/m, "").trim();
-    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    const match = stripped.match(/\{[\s\S]*\}/);
+    if (!match) {
       console.error("[ai-digest] JSON 추출 실패. raw:", raw.slice(0, 200));
       return null;
     }
-    return JSON.parse(jsonMatch[0]);
+    return JSON.parse(match[0]);
   } catch (e) {
     console.error("[ai-digest] Claude API 오류:", e);
     return null;
   }
 }
 
-// ─── Static demo digest (API 키 없을 때 UI 확인용) ───────────
+// ─── Cache ────────────────────────────────────────────────────
 
-const DEMO_DIGEST: AiDigest = {
-  generatedAt: new Date("2026-03-05T07:00:00+09:00").toISOString(),
-  dateLabel: "2026년 3월 4일 (어제)",
-  headline: "새 레귤레이션의 판도라 상자 열렸다 — 맥라렌·레드불·페라리 3파전 윤곽",
-  summary:
-    "호주 GP 개막을 나흘 앞두고 2026 시즌의 세력도가 서서히 모습을 드러내고 있다. " +
-    "맥라렌은 최종 리버리 공개 행사에서 챔피언 노리스의 자신감을 전면에 내세웠고, " +
-    "레드불 베르스타펜은 신규 레귤레이션 차량을 '완전히 다른 짐승'이라 표현하며 적응 기간을 시사했다. " +
-    "페라리에서는 해밀턴-레클레르 듀오가 공개적으로 팀 내 역학을 언급하기 시작했고, " +
-    "신생팀 캐딜락은 데뷔 레이스를 앞두고 가라지 내부를 공개해 미국 팀의 준비 수준을 확인시켰다. " +
-    "멜버른 레이스 당일 강우 예보가 나오면서 타이어 전략이 첫 레이스의 핵심 변수가 될 전망이다.",
-  bullets: [
-    {
-      emoji: "🧡",
-      title: "맥라렌 리버리 공개",
-      text: "노리스 '우리 차의 페이스에 자신 있다' — 2026 최종 디자인 언베일",
-      context: "챔피언 넘버 #1 달고 타이틀 방어 시즌 출격",
-      sourceName: "Autosport",
-    },
-    {
-      emoji: "🐂",
-      title: "베르스타펜의 경고",
-      text: "'2026 차는 완전히 다른 짐승' — 신규 레귤레이션 적응에 시간 필요 시사",
-      context: "4연속 챔피언도 새 기술 규정 앞에선 신중한 발언",
-      sourceName: "Motorsport.com",
-    },
-    {
-      emoji: "🔴",
-      title: "해밀턴-레클레르 관계",
-      text: "레클레르 '해밀턴과의 팀 내 역학, 기대와 경계가 교차' — 솔직한 내부 언급",
-      context: "7관왕과 페라리 에이스의 동거, 팀 내 No.1 경쟁 불가피",
-      sourceName: "The Race",
-    },
-    {
-      emoji: "🌧️",
-      title: "멜버른 비 예보",
-      text: "레이스 당일 상당한 강우 예상 — 타이어 전략이 개막전 최대 변수",
-      context: "2026 새 타이어 화합물의 빗속 성능은 미지수",
-      sourceName: "Sky Sports F1",
-    },
-    {
-      emoji: "🇺🇸",
-      title: "캐딜락 가라지 공개",
-      text: "GM 신생팀, 데뷔 전야 내부 공개 — 첫 F1 그리드 출격 준비 완료",
-      context: "1950년 F1 창설 이래 최초의 미국계 신생팀",
-      sourceName: "Sky Sports F1",
-    },
-    {
-      emoji: "📋",
-      title: "FIA 에어로 규정 명확화",
-      text: "액티브 에어로 작동 조건 테크니컬 디렉티브 발표 — 팀 이의제기 수용",
-      context: "새 레귤레이션 첫 시즌, 해석 혼란 정리 위한 FIA 신속 대응",
-      sourceName: "Motorsport.com",
-    },
-  ],
-  editorNote:
-    "베르스타펜의 '다른 짐승' 발언이 의미심장하다. 역대 최다 우승 기록 보유자가 새 차에 적응이 필요하다고 공개 인정하는 것은 이번 레귤레이션 변경의 파급력이 그만큼 크다는 방증이다. " +
-    "반면 노리스의 자신감은 맥라렌이 프리시즌 내내 숨겨온 페이스가 실제임을 시사할 수 있다. " +
-    "해밀턴-레클레르 관계는 시즌 내내 F1 최대 드라마 중 하나가 될 것이며, 개막전 멜버른의 비는 의외의 우승자를 낳을 최적의 조건을 제공할 수 있다.",
-  watchPoints: [
-    "노리스 vs 베르스타펜 — 새 레귤레이션 첫 레이스에서 누가 더 빨리 적응하는가",
-    "캐딜락 F1 데뷔 — 페레스·보타스가 포인트 스코어링에 성공할 수 있을까",
-    "멜버른 빗속 레이스 — 젖은 노면에서 강한 드라이버가 개막전 판도 주도",
-  ],
-  hotTopics: ["2026 개막전", "새 레귤레이션", "해밀턴-레클레르", "캐딜락 데뷔", "멜버른 비"],
-  articleCount: 10,
-};
-
-// ─── Public API ───────────────────────────────────────────────
-
-/**
- * 모듈 레벨에서 unstable_cache 래퍼 생성 (올바른 사용법).
- * 날짜(date)를 인자로 받아 캐시 키에 포함 → 매일 자동으로 새 캐시 엔트리.
- * revalidateTag('ai-digest', 'max')로 즉시 무효화 가능.
- */
 const _getCachedDigest = unstable_cache(
-  async (_date: string): Promise<AiDigest | null> => {
-    // 1. RSS에서 기사 수집
-    const digest = await getDailyDigest();
-    const all = digest.recent;
+  async (_key: string): Promise<AiDigest | null> => {
+    // 최근 23시간 기사 수집
+    const all = await getF1News(150);
+    const articles = all.filter((a) => isWithin23h(a.publishedAt));
 
-    // 2. 어제 기사 우선, 없으면 최근 24h
-    let articles = all.filter((a) => isYesterday(a.publishedAt));
-    if (articles.length < 5) {
-      articles = all.filter((a) => isWithin(a.publishedAt, 24));
-    }
-    if (articles.length === 0) {
-      articles = all.slice(0, 20);
+    if (articles.length < 3) {
+      console.log(`[ai-digest] 최근 23h 기사 ${articles.length}개 — 3개 미만 건너뜀`);
+      return null;
     }
 
-    // 3. Claude 호출 — API 키 없으면 데모 다이제스트로 폴백
+    console.log(`[ai-digest] ${articles.length}개 기사로 브리핑 생성 (key: ${_key})`);
     const articleList = buildArticleList(articles);
     const result = await callClaude(articleList);
-    if (!result) return DEMO_DIGEST;
+    if (!result) return null;
 
     return {
       generatedAt: new Date().toISOString(),
-      dateLabel: yesterdayLabel(),
+      dateLabel: dateLabel(),
       headline: result.headline,
       summary: result.summary,
       bullets: result.bullets,
@@ -253,14 +183,9 @@ const _getCachedDigest = unstable_cache(
     };
   },
   ["ai-digest"],
-  { revalidate: 86400, tags: ["ai-digest"] }
+  { revalidate: 3600, tags: ["ai-digest"] }
 );
 
-/** KST 기준 오늘 날짜 YYYY-MM-DD */
-function todayKST(): string {
-  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-}
-
 export async function getAiDigest(): Promise<AiDigest | null> {
-  return _getCachedDigest(todayKST());
+  return _getCachedDigest(cacheKey());
 }

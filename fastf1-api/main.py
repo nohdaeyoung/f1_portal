@@ -884,7 +884,11 @@ async def get_replay_frames(
         replay_cache[key] = {"status": "done", "result": cached, "error": None}
         return cached
 
-    # 5. Compute in background thread
+    # 5. OOM 방지: DISABLE_COMPUTE=true이면 계산 금지 (Railway 환경)
+    if os.environ.get("DISABLE_COMPUTE", "").lower() == "true":
+        raise HTTPException(status_code=503, detail="Replay computation disabled on this instance. Data not yet cached.")
+
+    # 6. Compute in background thread
     replay_cache[key] = {"status": "processing", "result": None, "error": None}
     loop = asyncio.get_event_loop()
 
@@ -936,6 +940,11 @@ async def driver_telemetry(
     cached = _load_telemetry_from_firebase(year, gp, session, driver, fps)
     if cached:
         return cached
+
+    # OOM 방지: DISABLE_COMPUTE=true이면 계산 금지 (Railway 환경)
+    # sess.load()가 22명 전체 데이터를 로드하므로 메모리 사용량이 replay-frames와 동일
+    if os.environ.get("DISABLE_COMPUTE", "").lower() == "true":
+        raise HTTPException(status_code=503, detail="Telemetry computation disabled on this instance. Data not yet cached.")
 
     sess = fastf1.get_session(year, gp, session)
     sess.load(telemetry=True, laps=True)

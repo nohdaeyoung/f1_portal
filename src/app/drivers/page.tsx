@@ -5,7 +5,7 @@ export const metadata = {
   title: "F1 드라이버 아카이브",
   description: "2026 시즌 현역 F1 드라이버 22명의 프로필, 통계, 시즌 성적을 한눈에 확인하세요.",
   openGraph: {
-    title: "F1 드라이버 아카이브 | PitLane",
+    title: "F1 드라이버 아카이브 | F1 by 324.ing",
     description: "2026 시즌 현역 F1 드라이버 22명의 프로필, 통계, 시즌 성적을 한눈에 확인하세요.",
     url: "https://f1.324.ing/drivers",
     images: [{ url: "/og-default.png", width: 1200, height: 630 }],

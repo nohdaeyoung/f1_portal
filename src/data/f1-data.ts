@@ -83,7 +83,7 @@ export interface RaceCalendar {
   koreanName: string;
   circuitId: string;
   date: string;
-  status: "completed" | "next" | "upcoming";
+  status: "completed" | "next" | "upcoming" | "cancelled";
   winner?: string;
   sessions?: SessionSchedule; // populated by live API or static fallback
 }
@@ -445,7 +445,7 @@ export const drivers: Driver[] = [
     id: "leclerc", firstName: "Charles", lastName: "Leclerc",
     number: 16, team: "Scuderia Ferrari", teamId: "ferrari", teamColor: "#E8002D",
     nationality: "Monaco", flag: "🇲🇨", dateOfBirth: "1997-10-16",
-    wins: 8, podiums: 50, poles: 27, championships: 0, points: 1672,
+    wins: 8, podiums: 51, poles: 27, championships: 0, points: 1672,
     bio: "모나코 태생의 찰스 레클레르는 어린 시절 아버지처럼 따르던 페라리 대부 세르조 마르키온네의 응원 속에 페라리 아카데미에 입문해 2019년부터 스쿠데리아의 간판 드라이버로 활약하고 있다. 예선에서 차를 한계 너머까지 밀어붙이는 원랩 스피드는 현역 최고 수준이며, 2026년 해밀턴과의 공동 선봉이라는 새로운 도전에 직면해 있다.",
     strengths: ["원랩 퀄리파잉 속도 (현역 최고 수준)", "공격적 레이스 스타트", "개인 한계 돌파 드라이빙", "서킷 데이터 암기력"],
     careerHighlights: [
@@ -462,7 +462,7 @@ export const drivers: Driver[] = [
     id: "russell", firstName: "George", lastName: "Russell",
     number: 63, team: "Mercedes", teamId: "mercedes", teamColor: "#27F4D2",
     nationality: "United Kingdom", flag: "🇬🇧", dateOfBirth: "1998-02-15",
-    wins: 5, podiums: 24, poles: 7, championships: 0, points: 1033,
+    wins: 6, podiums: 25, poles: 8, championships: 0, points: 1058,
     bio: "킹스린 출신의 조지 러셀은 카트 시절부터 '완벽한 드라이버'로 불릴 만큼 실수가 적고 분석적인 레이싱 스타일을 구사한다. 윌리엄스에서 3년간 개인 기량을 증명한 뒤 2022년 메르세데스 1군에 합류했고, 2025년 해밀턴의 페라리 이적 이후 팀의 확실한 리더로 자리잡았다.",
     strengths: ["실수 제로에 가까운 일관성", "데이터·공학적 피드백 역량", "타이어 열화 관리", "긴 레이스에서의 페이스 유지"],
     careerHighlights: [
@@ -477,7 +477,7 @@ export const drivers: Driver[] = [
     id: "antonelli", firstName: "Andrea Kimi", lastName: "Antonelli",
     number: 12, team: "Mercedes", teamId: "mercedes", teamColor: "#27F4D2",
     nationality: "Italy", flag: "🇮🇹", dateOfBirth: "2006-08-25",
-    wins: 0, podiums: 3, poles: 0, championships: 0, points: 150,
+    wins: 0, podiums: 4, poles: 0, championships: 0, points: 150,
     bio: "볼로냐 출신의 안드레아 키미 안토넬리는 2006년생으로 2026년 F1 데뷔 당시 역대 세 번째로 어린 그리드 데뷔 드라이버다. 이름 중간의 '키미'는 킴 라이쾨넨을 존경해 부모가 붙여준 이름으로 유명하다. 메르세데스가 해밀턴의 후계자로 낙점한 미래의 F1 슈퍼스타로 평가받는다.",
     strengths: ["폭발적인 원랩 속도", "빠른 상황 적응력", "공격적 오버테이킹 본능"],
     careerHighlights: [
@@ -1109,11 +1109,11 @@ export const circuits: Circuit[] = [
 // ─── Race Calendar 2026 ───────────────────────────────────────
 
 export const calendar: RaceCalendar[] = [
-  { round: 1,  name: "Australian Grand Prix",      koreanName: "호주 GP",          circuitId: "albert-park",  date: "2026-03-08", status: "next" },
-  { round: 2,  name: "Chinese Grand Prix",          koreanName: "중국 GP",          circuitId: "shanghai",     date: "2026-03-15", status: "upcoming" },
+  { round: 1,  name: "Australian Grand Prix",      koreanName: "호주 GP",          circuitId: "albert-park",  date: "2026-03-08", status: "completed", winner: "George Russell" },
+  { round: 2,  name: "Chinese Grand Prix",          koreanName: "중국 GP",          circuitId: "shanghai",     date: "2026-03-15", status: "completed", winner: "Kimi Antonelli" },
   { round: 3,  name: "Japanese Grand Prix",         koreanName: "일본 GP",          circuitId: "suzuka",       date: "2026-03-29", status: "upcoming" },
-  { round: 4,  name: "Bahrain Grand Prix",          koreanName: "바레인 GP",         circuitId: "bahrain",      date: "2026-04-12", status: "upcoming" },
-  { round: 5,  name: "Saudi Arabian Grand Prix",    koreanName: "사우디 아라비아 GP", circuitId: "jeddah",       date: "2026-04-19", status: "upcoming" },
+  { round: 4,  name: "Bahrain Grand Prix",          koreanName: "바레인 GP",         circuitId: "bahrain",      date: "2026-04-12", status: "cancelled" },
+  { round: 5,  name: "Saudi Arabian Grand Prix",    koreanName: "사우디 아라비아 GP", circuitId: "jeddah",       date: "2026-04-19", status: "cancelled" },
   { round: 6,  name: "Miami Grand Prix",            koreanName: "마이애미 GP",       circuitId: "miami",        date: "2026-05-03", status: "upcoming" },
   { round: 7,  name: "Canadian Grand Prix",         koreanName: "캐나다 GP",         circuitId: "montreal",     date: "2026-05-24", status: "upcoming" },
   { round: 8,  name: "Monaco Grand Prix",           koreanName: "모나코 GP",         circuitId: "monaco",       date: "2026-06-07", status: "upcoming" },
@@ -1139,44 +1139,43 @@ export const calendar: RaceCalendar[] = [
 
 // 2026 시즌 개막 전 초기값 — 2025 최종 순위 기준 정렬, 레이스 완료 시 Jolpica API 자동 업데이트
 export const driverStandings: Standing[] = [
-  // 2025 최종 순위 기준 (Tsunoda 제외 — 2026 미참가, Lindblad·Bottas·Perez 신규)
-  { position: 1,  driverId: "norris",      points: 0, wins: 0 }, // 2025 P1 423pts
-  { position: 2,  driverId: "verstappen",  points: 0, wins: 0 }, // 2025 P2 421pts
-  { position: 3,  driverId: "piastri",     points: 0, wins: 0 }, // 2025 P3 410pts
-  { position: 4,  driverId: "russell",     points: 0, wins: 0 }, // 2025 P4 319pts
-  { position: 5,  driverId: "leclerc",     points: 0, wins: 0 }, // 2025 P5 242pts
-  { position: 6,  driverId: "hamilton",    points: 0, wins: 0 }, // 2025 P6 156pts
-  { position: 7,  driverId: "antonelli",   points: 0, wins: 0 }, // 2025 P7 150pts
-  { position: 8,  driverId: "albon",       points: 0, wins: 0 }, // 2025 P8  73pts
-  { position: 9,  driverId: "sainz",       points: 0, wins: 0 }, // 2025 P9  64pts
-  { position: 10, driverId: "alonso",      points: 0, wins: 0 }, // 2025 P10 56pts
-  { position: 11, driverId: "hulkenberg",  points: 0, wins: 0 }, // 2025 P11 51pts
-  { position: 12, driverId: "hadjar",      points: 0, wins: 0 }, // 2025 P12 51pts
-  { position: 13, driverId: "bearman",     points: 0, wins: 0 }, // 2025 P13 41pts
-  { position: 14, driverId: "lawson",      points: 0, wins: 0 }, // 2025 P14 38pts
-  { position: 15, driverId: "ocon",        points: 0, wins: 0 }, // 2025 P15 38pts
-  { position: 16, driverId: "stroll",      points: 0, wins: 0 }, // 2025 P16 33pts
-  { position: 17, driverId: "gasly",       points: 0, wins: 0 }, // 2025 P18 22pts
-  { position: 18, driverId: "bortoleto",   points: 0, wins: 0 }, // 2025 P19 19pts
-  { position: 19, driverId: "colapinto",   points: 0, wins: 0 }, // 2025 P20  0pts
-  { position: 20, driverId: "lindblad",    points: 0, wins: 0 }, // 2026 신규 (RB)
-  { position: 21, driverId: "bottas",      points: 0, wins: 0 }, // 2026 신규 (Cadillac)
-  { position: 22, driverId: "perez",       points: 0, wins: 0 }, // 2026 신규 (Cadillac)
+  { position: 1, driverId: "russell", points: 25, wins: 1 },
+  { position: 2, driverId: "antonelli", points: 18, wins: 0 },
+  { position: 3, driverId: "leclerc", points: 15, wins: 0 },
+  { position: 4, driverId: "hamilton", points: 12, wins: 0 },
+  { position: 5, driverId: "norris", points: 10, wins: 0 },
+  { position: 6, driverId: "verstappen", points: 8, wins: 0 },
+  { position: 7, driverId: "bearman", points: 6, wins: 0 },
+  { position: 8, driverId: "lindblad", points: 4, wins: 0 },
+  { position: 9, driverId: "bortoleto", points: 2, wins: 0 },
+  { position: 10, driverId: "gasly", points: 1, wins: 0 },
+  { position: 11, driverId: "ocon", points: 0, wins: 0 },
+  { position: 12, driverId: "albon", points: 0, wins: 0 },
+  { position: 13, driverId: "lawson", points: 0, wins: 0 },
+  { position: 14, driverId: "colapinto", points: 0, wins: 0 },
+  { position: 15, driverId: "sainz", points: 0, wins: 0 },
+  { position: 16, driverId: "perez", points: 0, wins: 0 },
+  { position: 17, driverId: "stroll", points: 0, wins: 0 },
+  { position: 18, driverId: "alonso", points: 0, wins: 0 },
+  { position: 19, driverId: "bottas", points: 0, wins: 0 },
+  { position: 20, driverId: "hadjar", points: 0, wins: 0 },
+  { position: 21, driverId: "piastri", points: 0, wins: 0 },
+  { position: 22, driverId: "hulkenberg", points: 0, wins: 0 },
 ];
 
 // 2026 시즌 개막 전 초기값 — 2025 최종 순위 기준 정렬, 레이스 완료 시 Jolpica API 자동 업데이트
 export const constructorStandings: ConstructorStanding[] = [
-  { position: 1,  teamId: "mclaren",       points: 0, wins: 0 }, // 2025 P1  833pts
-  { position: 2,  teamId: "mercedes",      points: 0, wins: 0 }, // 2025 P2  469pts
-  { position: 3,  teamId: "red-bull",      points: 0, wins: 0 }, // 2025 P3  451pts
-  { position: 4,  teamId: "ferrari",       points: 0, wins: 0 }, // 2025 P4  398pts
-  { position: 5,  teamId: "williams",      points: 0, wins: 0 }, // 2025 P5  137pts
-  { position: 6,  teamId: "rb",            points: 0, wins: 0 }, // 2025 P6   92pts
-  { position: 7,  teamId: "aston-martin",  points: 0, wins: 0 }, // 2025 P7   89pts
-  { position: 8,  teamId: "haas",          points: 0, wins: 0 }, // 2025 P8   79pts
-  { position: 9,  teamId: "sauber",        points: 0, wins: 0 }, // 2025 P9   70pts
-  { position: 10, teamId: "alpine",        points: 0, wins: 0 }, // 2025 P10  22pts
-  { position: 11, teamId: "cadillac",      points: 0, wins: 0 }, // 2026 신설
+  { position: 1, teamId: "mercedes", points: 43, wins: 1 },
+  { position: 2, teamId: "ferrari", points: 27, wins: 0 },
+  { position: 3, teamId: "mclaren", points: 10, wins: 0 },
+  { position: 4, teamId: "red-bull", points: 8, wins: 0 },
+  { position: 5, teamId: "haas", points: 6, wins: 0 },
+  { position: 6, teamId: "rb", points: 4, wins: 0 },
+  { position: 7, teamId: "sauber", points: 2, wins: 0 },
+  { position: 8, teamId: "alpine", points: 1, wins: 0 },
+  { position: 9, teamId: "williams", points: 0, wins: 0 },
+  { position: 10, teamId: "cadillac", points: 0, wins: 0 },
+  { position: 11, teamId: "aston-martin", points: 0, wins: 0 },
 ];
 
 // ─── Sample News Digest ───────────────────────────────────────
