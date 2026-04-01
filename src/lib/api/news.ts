@@ -177,8 +177,8 @@ async function fetchFeed(url: string, source: string): Promise<NewsArticle[]> {
 }
 
 function isToday(iso: string): boolean {
-  const articleDate = new Date(iso);
-  const now = new Date();
+  const articleDate = new Date(new Date(iso).toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
   return (
     articleDate.getFullYear() === now.getFullYear() &&
     articleDate.getMonth() === now.getMonth() &&
@@ -244,8 +244,8 @@ export async function getDailyDigest(): Promise<DailyDigest> {
 
   const sourcesActive = new Set(deduped.map((a) => a.sourceName)).size;
 
-  const now = new Date();
-  const date = `${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일`;
+  const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  const date = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일`;
 
   return {
     date,
