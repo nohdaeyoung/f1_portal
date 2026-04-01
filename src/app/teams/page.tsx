@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { teams, getTeamDrivers } from "@/data/f1-data";
 
+export const revalidate = 300; // ISR: 5분마다 재생성
+
 export const metadata = {
   title: "F1 팀 아카이브",
   description: "2026 시즌 F1 컨스트럭터 11개 팀의 역사, 드라이버 라인업, 챔피언십 통계를 확인하세요.",

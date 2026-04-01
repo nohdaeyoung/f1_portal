@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { drivers } from "@/data/f1-data";
 
+export const revalidate = 300; // ISR: 5분마다 재생성
+
 export const metadata = {
   title: "F1 드라이버 아카이브",
   description: "2026 시즌 현역 F1 드라이버 22명의 프로필, 통계, 시즌 성적을 한눈에 확인하세요.",

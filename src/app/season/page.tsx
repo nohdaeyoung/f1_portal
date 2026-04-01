@@ -12,6 +12,8 @@ import { RaceWeekendLive } from "./RaceWeekendLive";
 import { StandingsTabs } from "@/components/season/StandingsTabs";
 import { RoundStandingsViewer } from "@/components/season/RoundStandingsViewer";
 
+export const revalidate = 300; // ISR: 5분마다 재생성
+
 export const metadata = {
   title: "2026 시즌 트래커",
   description: "2026 F1 시즌 드라이버 챔피언십 순위, 컨스트럭터 순위, 레이스 캘린더 및 결과를 실시간으로 확인하세요.",
