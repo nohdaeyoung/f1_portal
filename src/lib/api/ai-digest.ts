@@ -34,8 +34,8 @@ function cacheKey(): string {
 }
 
 function dateLabel(): string {
-  const d = new Date();
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+  const kst = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Seoul" }));
+  return `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일`;
 }
 
 // ─── Types ────────────────────────────────────────────────────

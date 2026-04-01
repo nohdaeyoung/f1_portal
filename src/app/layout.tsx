@@ -3,13 +3,14 @@ import { Barlow_Condensed, DM_Sans } from "next/font/google";
 import Link from "next/link";
 import Script from "next/script";
 import { NavLinks } from "@/components/layout/NavLinks";
+import { unstable_cache } from "next/cache";
 import { readFileSync } from "fs";
 import { join } from "path";
 import "./globals.css";
 
-// ─── Admin config: Firestore → local file fallback ─────────────
+// ─── Admin config: Firestore → local file fallback (cached 1h) ──
 
-async function getAdminCfg() {
+async function _fetchAdminCfg() {
   // 1) Firestore (Vercel 배포 환경)
   try {
     const { initializeApp, getApps, cert } = await import("firebase-admin/app");
@@ -38,6 +39,10 @@ async function getAdminCfg() {
     return { analytics: parsed.analytics ?? {}, meta: parsed.meta ?? {} };
   } catch { return { analytics: {} as Record<string, string>, meta: {} as Record<string, string> }; }
 }
+
+const getAdminCfg = unstable_cache(_fetchAdminCfg, ["admin-config"], {
+  revalidate: 3600,
+});
 
 async function getAnalytics() {
   const { analytics: cfg } = await getAdminCfg();
