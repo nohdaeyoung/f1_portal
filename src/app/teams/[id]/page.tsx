@@ -5,6 +5,8 @@ import { fetchTeamHistory } from "@/lib/data/live";
 import { teamSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
 import { TeamHistoryChart } from "@/components/f1/TeamHistoryChart";
 
+export const revalidate = 300; // ISR: 5분마다 재생성
+
 export async function generateStaticParams() {
   return teams.map((t) => ({ id: t.id }));
 }

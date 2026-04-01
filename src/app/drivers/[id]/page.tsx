@@ -7,6 +7,8 @@ import { driverSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
 import { DriverCareerChart } from "@/components/f1/DriverCareerChart";
 import { DriverPositionChart } from "@/components/f1/DriverPositionChart";
 
+export const revalidate = 300; // ISR: 5분마다 재생성
+
 export async function generateStaticParams() {
   return drivers.map((d) => ({ id: d.id }));
 }
