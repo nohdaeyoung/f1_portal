@@ -146,11 +146,11 @@ function parseItems(xml: string, sourceName: string): NewsArticle[] {
 
       if (!title || !link) return null;
 
-      let publishedAt = new Date().toISOString();
-      try {
-        const d = new Date(pubDate);
-        if (!isNaN(d.getTime())) publishedAt = d.toISOString();
-      } catch {}
+      // pubDate가 없거나 파싱 실패하면 기사 제외 (가짜 "방금 전" 방지)
+      if (!pubDate) return null;
+      const d = new Date(pubDate);
+      if (isNaN(d.getTime())) return null;
+      const publishedAt = d.toISOString();
 
       const article: NewsArticle = { id: guid, title, description, link, publishedAt, sourceName };
       if (image) article.image = image;
