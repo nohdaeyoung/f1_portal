@@ -40,3 +40,16 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .gstack/
+
+# local AI tooling state
+.claude/
+.omc/
+docs/.pdca-snapshots/
+
+# fastf1 caches
+fastf1-api/.cache/
+fastf1-api/.diskcache/
+__pycache__/
+
+# unrelated research (belongs in /Volumes/Dev/naverpost)
+truckstar-research/
