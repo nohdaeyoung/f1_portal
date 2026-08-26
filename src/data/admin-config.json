@@ -1,0 +1,55 @@
+{
+  "analytics": {
+    "gtmId": "",
+    "gaId": "",
+    "naverCode": "",
+    "headCode": "",
+    "bodyCode": ""
+  },
+  "meta": {
+    "siteTitle": "F1 한국어 정보 포털 | F1 by 324.ing",
+    "titleTemplate": "",
+    "description": "",
+    "ogTitle": "",
+    "ogDescription": "F1 대회 및 규정 정보를 제공합니다. 국내 유일의 정보 포털입니다.",
+    "ogImage": "",
+    "keywords": "F1, 포뮬러1, formula1, F1 한국, F1 2026시즌"
+  },
+  "navLinks": [
+    {
+      "href": "/news",
+      "label": "뉴스",
+      "description": "F1 최신 뉴스"
+    },
+    {
+      "href": "/season",
+      "label": "시즌",
+      "description": "2026 시즌 일정 및 결과"
+    },
+    {
+      "href": "/drivers",
+      "label": "드라이버",
+      "description": "F1 드라이버 프로필"
+    },
+    {
+      "href": "/teams",
+      "label": "팀",
+      "description": "F1 컨스트럭터 팀"
+    },
+    {
+      "href": "/circuits",
+      "label": "서킷",
+      "description": "F1 서킷 가이드"
+    },
+    {
+      "href": "/history",
+      "label": "역사",
+      "description": "F1 역대 챔피언 & 역사"
+    },
+    {
+      "href": "/info",
+      "label": "규정",
+      "description": "2026 F1 레귤레이션"
+    }
+  ]
+}

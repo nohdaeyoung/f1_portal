@@ -1,0 +1,41 @@
+{
+  "name": "F1 by 324.ing",
+  "short_name": "F1 324",
+  "description": "2026 F1 드라이버 아카이브, 서킷 가이드, 시즌 트래커, AI 뉴스 브리핑",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0D0D14",
+  "theme_color": "#E8002D",
+  "orientation": "portrait-primary",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["sports", "news"],
+  "shortcuts": [
+    {
+      "name": "드라이버",
+      "short_name": "드라이버",
+      "description": "2026 F1 드라이버 목록",
+      "url": "/drivers",
+      "icons": [{ "src": "/icon.png", "sizes": "512x512" }]
+    },
+    {
+      "name": "뉴스",
+      "short_name": "뉴스",
+      "description": "F1 뉴스 & AI 브리핑",
+      "url": "/news",
+      "icons": [{ "src": "/icon.png", "sizes": "512x512" }]
+    }
+  ]
+}
