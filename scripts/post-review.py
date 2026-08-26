@@ -7,7 +7,7 @@
 - 제목: 마크다운 첫 `# ` 헤딩 (본문에서는 제거됨 — 커뮤니티가 title을 따로 렌더링)
 - 슬러그: r{round}-{key}-review  (key: fp1|fp2|fp3|sq|sprint|qualifying|race|round)
 - 인증: ADMIN_COOKIE_SECRET 환경변수 또는 .env.local
-- 같은 슬러그 글이 이미 있으면 건너뜀 (중복 게시 방지)
+- 같은 슬러그 글이 이미 있으면 건너뜀 (중복 게시 방지). --update 시 기존 글을 PATCH.
 """
 import argparse
 import json
@@ -32,16 +32,21 @@ def load_secret() -> str:
     sys.exit("ADMIN_COOKIE_SECRET not found (env or .env.local)")
 
 
-def slug_exists(base: str, round_no: int, slug: str) -> bool:
-    # /community/{slug} 는 slug 미존재 시 404 — 인덱스 불필요한 존재 확인
+def find_post_id(base: str, slug: str) -> str | None:
+    # /community/{slug} 는 slug 미존재 시 404 — 인덱스 불필요한 존재 확인.
+    # 존재하면 canonical 링크(https://.../community/{id})에서 문서 ID 추출.
     # (참고: /api/posts?round=N 은 복합 인덱스 부재로 500)
     try:
         with urllib.request.urlopen(f"{base}/community/{slug}", timeout=30) as r:
-            return r.status == 200
+            html = r.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return False
+            return None
         raise
+    m = re.search(r'rel="canonical"\s+href="[^"]*/community/([^"/]+)"', html)
+    if not m:
+        sys.exit(f"post exists but canonical id not found for {slug}")
+    return m.group(1)
 
 
 def main():
@@ -50,6 +55,7 @@ def main():
     ap.add_argument("--round", type=int, required=True)
     ap.add_argument("--key", choices=VALID_KEYS, required=True)
     ap.add_argument("--base", default="https://f1.324.ing")
+    ap.add_argument("--update", action="store_true", help="기존 글이 있으면 PATCH로 갱신")
     args = ap.parse_args()
 
     text = open(args.file, encoding="utf-8").read().strip()
@@ -60,8 +66,9 @@ def main():
     body = text[m.end():].strip()
 
     slug = f"r{args.round}-{args.key}-review"
-    if slug_exists(args.base, args.round, slug):
-        print(f"skip: {slug} already exists")
+    existing_id = find_post_id(args.base, slug)
+    if existing_id and not args.update:
+        print(f"skip: {slug} already exists (id {existing_id}); use --update to overwrite")
         return
 
     # 첫 본문 문단을 meta description으로
@@ -85,18 +92,25 @@ def main():
         },
     }
 
+    if existing_id:
+        url, method = f"{args.base}/api/posts/{existing_id}", "PATCH"
+    else:
+        url, method = f"{args.base}/api/posts", "POST"
+
     req = urllib.request.Request(
-        f"{args.base}/api/posts",
+        url,
         data=json.dumps(payload).encode(),
         headers={
             "Content-Type": "application/json",
             "Cookie": f"pitlane_admin={load_secret()}",
         },
-        method="POST",
+        method=method,
     )
     with urllib.request.urlopen(req, timeout=60) as r:
         res = json.loads(r.read())
-    print(f"posted: {slug} -> {args.base}/community/{res['id']} (slug URL: {args.base}/community/{slug})")
+    post_id = existing_id or res["id"]
+    verb = "updated" if existing_id else "posted"
+    print(f"{verb}: {slug} -> {args.base}/community/{post_id} (slug URL: {args.base}/community/{slug})")
 
 
 if __name__ == "__main__":
