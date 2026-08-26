@@ -4,7 +4,7 @@ Serves F1 telemetry and session data to the Next.js frontend.
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse, RedirectResponse
 from typing import Optional
@@ -115,6 +115,18 @@ def _r2_presigned_url(key: str, expires: int = 3600) -> str | None:
     except Exception as e:
         logger.warning(f"[r2] Presigned URL error {key}: {e}")
         return None
+
+
+def _r2_exists(key: str) -> bool:
+    """HEAD check — is the object actually in R2? Cheap, no body download."""
+    r2 = _get_r2()
+    if not r2:
+        return False
+    try:
+        r2.head_object(Bucket=R2_BUCKET, Key=key)
+        return True
+    except Exception:
+        return False
 
 
 def _r2_save(key: str, data: dict):
@@ -874,10 +886,14 @@ async def get_replay_frames(
         return cached
 
     # 3. Cloudflare R2 cache — redirect client directly to CDN (no Railway bandwidth)
+    #    HEAD first: generate_presigned_url signs blindly even when the key is
+    #    missing, so without this existence check a cache miss 307s the client
+    #    to a NoSuchKey 404 instead of falling through to compute/503.
     r2_key = _r2_replay_key(year, gp, session, fps)
-    presigned = _r2_presigned_url(r2_key)
-    if presigned:
-        return RedirectResponse(url=presigned, status_code=307)
+    if _r2_exists(r2_key):
+        presigned = _r2_presigned_url(r2_key)
+        if presigned:
+            return RedirectResponse(url=presigned, status_code=307)
 
     # 4. Firebase Storage cache (optional fallback)
     cached = _load_from_firebase(year, gp, session, fps)
