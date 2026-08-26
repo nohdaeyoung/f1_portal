@@ -246,9 +246,18 @@ export default async function SeasonPage() {
 
   const nextRace = calendar.find((r) => r.status === "next");
   const completed = calendar.filter((r) => r.status === "completed");
-  const completedRounds = completed.map((r) => r.round);
-  const championshipProgress = completedRounds.length >= 2
-    ? await fetchChampionshipProgress(2026, completedRounds)
+  const completedRounds = completed.map((r) => r.round); // 화면 표시용 (로컬 라운드 번호)
+  // 취소된 라운드(예: 바레인·사우디)는 Jolpica 시즌 번호에서 빠져 로컬 라운드와
+  // API 라운드가 어긋난다. 순위 API는 API 라운드 기준으로 조회해야 한다.
+  const cancelledBefore = (round: number) =>
+    calendar.filter((r) => r.status === "cancelled" && r.round < round).length;
+  const roundOptions = completed.map((r) => ({
+    display: r.round,
+    api: r.round - cancelledBefore(r.round),
+  }));
+  const completedApiRounds = roundOptions.map((o) => o.api);
+  const championshipProgress = completedApiRounds.length >= 2
+    ? await fetchChampionshipProgress(2026, completedApiRounds)
     : [];
   const lastCompleted = [...completed].reverse()[0];
   const podiumData =
@@ -325,8 +334,8 @@ export default async function SeasonPage() {
           championshipProgress={championshipProgress}
           completedRounds={completedRounds}
         />
-        {completedRounds.length > 0 && (
-          <RoundStandingsViewer completedRounds={completedRounds} season={2026} />
+        {roundOptions.length > 0 && (
+          <RoundStandingsViewer rounds={roundOptions} season={2026} />
         )}
       </div>
 
