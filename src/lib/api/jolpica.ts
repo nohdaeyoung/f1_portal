@@ -3,12 +3,28 @@
 
 const BASE = "https://api.jolpi.ca/ergast/f1";
 
+const MAX_429_RETRIES = 4;
+
 async function fetchJolpica<T>(path: string, revalidate = 300): Promise<JolpicaResponse<T>> {
   const [basePath, query] = path.split("?");
   const url = `${BASE}${basePath}.json${query ? `?${query}` : ""}`;
-  const res = await fetch(url, { next: { revalidate } });
-  if (!res.ok) throw new Error(`Jolpica API error: ${res.status} ${path}`);
-  return res.json();
+
+  // Jolpica rate-limits bursts. A production build renders 350+ pages across parallel
+  // workers that don't share the fetch cache, so a single 429 used to collapse the page
+  // to mock data. Retry with jittered backoff — every caller routes through here.
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, { next: { revalidate } });
+    if (res.ok) return res.json();
+    if (res.status !== 429 || attempt >= MAX_429_RETRIES) {
+      throw new Error(`Jolpica API error: ${res.status} ${path}`);
+    }
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const backoff = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : 500 * 2 ** attempt;
+    // jitter so parallel build workers don't retry in lockstep
+    await new Promise((r) => setTimeout(r, backoff + Math.random() * 400));
+  }
 }
 
 /** Run async tasks with limited concurrency to avoid rate-limiting */
@@ -196,10 +212,35 @@ export async function getRaceResults(
 
 /** All race results for a season */
 export async function getAllResults(season: string | number = "current") {
-  const data = await fetchJolpica<{
-    RaceTable: { season: string; Races: JolpicaRace[] };
-  }>(`/${season}/results?limit=1000`, 300);
-  return data.MRData.RaceTable.Races;
+  // Jolpica/Ergast caps results at 100 ROWS per page (not races). A season with
+  // more than ~5 rounds exceeds that, so `limit=1000` silently returns only the
+  // first 100 rows and later rounds vanish. Paginate by offset and merge each
+  // round's results — a single race can straddle a page boundary.
+  const byRound = new Map<string, JolpicaRace>();
+  const LIMIT = 100;
+  let offset = 0;
+  let total = Infinity;
+
+  while (offset < total) {
+    const data = await fetchJolpica<{
+      RaceTable: { season: string; Races: JolpicaRace[] };
+    }>(`/${season}/results?limit=${LIMIT}&offset=${offset}`, 300);
+    total = parseInt(data.MRData.total) || 0;
+    const races = data.MRData.RaceTable.Races;
+    if (races.length === 0) break;
+
+    for (const race of races) {
+      const existing = byRound.get(race.round);
+      if (existing) {
+        existing.Results = [...(existing.Results ?? []), ...(race.Results ?? [])];
+      } else {
+        byRound.set(race.round, { ...race });
+      }
+    }
+    offset += LIMIT;
+  }
+
+  return [...byRound.values()].sort((a, b) => parseInt(a.round) - parseInt(b.round));
 }
 
 /** Driver standings */
