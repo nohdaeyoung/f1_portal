@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/live";
 import { getCircuit, getDriver, getTeam } from "@/data/f1-data";
 import { calendar as mockCalendar } from "@/data/f1-data";
+import { getRoundReviews, type ReviewKey, type Post } from "@/lib/community/posts";
 import { sportsEventSchema, breadcrumbSchema, jsonLdScript } from "@/lib/jsonld";
 
 export const revalidate = 300;
@@ -1062,6 +1063,50 @@ async function SessionDataView({
 
 // ─── Page ─────────────────────────────────────────────────────
 
+// ─── 리뷰 링크 ─────────────────────────────────────────────────
+
+const REVIEW_LABEL: Record<ReviewKey, string> = {
+  fp1: "FP1 리뷰",
+  fp2: "FP2 리뷰",
+  fp3: "FP3 리뷰",
+  sq: "스프린트 퀄리파잉 리뷰",
+  sprint: "스프린트 리뷰",
+  qualifying: "퀄리파잉 리뷰",
+  race: "레이스 리뷰",
+  round: "라운드 종합 리뷰",
+};
+
+const REVIEW_ORDER: ReviewKey[] = ["fp1", "fp2", "fp3", "sq", "sprint", "qualifying", "race", "round"];
+
+function reviewHref(post: Post): string {
+  return `/community/${post.seo?.slug ?? post.id}`;
+}
+
+function ReviewLinksSection({ reviews }: { reviews: Partial<Record<ReviewKey, Post>> }) {
+  const keys = REVIEW_ORDER.filter((k) => reviews[k]);
+  if (keys.length === 0) return null;
+  return (
+    <section>
+      <h2 className="text-xl font-bold text-white mb-4">세션 리뷰</h2>
+      <div className="flex gap-3 flex-wrap">
+        {keys.map((k) => (
+          <Link
+            key={k}
+            href={reviewHref(reviews[k]!)}
+            className={
+              k === "round"
+                ? "px-5 py-2.5 bg-[#E8002D]/10 border border-[#E8002D]/40 text-[#E8002D] text-sm font-bold rounded-lg hover:bg-[#E8002D]/20 transition-colors"
+                : "px-5 py-2.5 bg-white/[0.06] border border-white/10 text-white text-sm font-bold rounded-lg hover:bg-white/[0.12] transition-colors"
+            }
+          >
+            📝 {REVIEW_LABEL[k]} →
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default async function GrandPrixPage({
   params,
   searchParams,
@@ -1095,6 +1140,12 @@ export default async function GrandPrixPage({
   const daysUntil = isUpcoming && race.sessions
     ? Math.ceil((new Date(race.sessions.race).getTime() - Date.now()) / 86_400_000)
     : null;
+
+  // 공식 리뷰 글 (Firestore 미설정/장애 시 조용히 빈 목록)
+  const reviews = await getRoundReviews(roundNum).catch(
+    () => ({} as Partial<Record<ReviewKey, Post>>)
+  );
+  const sessionReview = activeSession ? reviews[activeSession as ReviewKey] : undefined;
 
   const ldEvent = sportsEventSchema({
     round: race.round,
@@ -1254,10 +1305,20 @@ export default async function GrandPrixPage({
       {/* ── 탭 컨텐츠 ── */}
       {activeSession && sessionDateIso ? (
         /* 세션 상세 뷰 */
-        <SessionDataView
-          sessionDateIso={sessionDateIso}
-          session={activeSession}
-        />
+        <div className="space-y-6">
+          {sessionReview && (
+            <Link
+              href={reviewHref(sessionReview)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#E8002D]/10 border border-[#E8002D]/40 text-[#E8002D] text-sm font-bold rounded-lg hover:bg-[#E8002D]/20 transition-colors"
+            >
+              📝 {REVIEW_LABEL[activeSession as ReviewKey]} 보기 →
+            </Link>
+          )}
+          <SessionDataView
+            sessionDateIso={sessionDateIso}
+            session={activeSession}
+          />
+        </div>
       ) : (
         /* 개요 탭 */
         <div className="space-y-10">
@@ -1268,6 +1329,9 @@ export default async function GrandPrixPage({
               <SessionTimetable sessions={race.sessions} round={roundNum} />
             </section>
           )}
+
+          {/* 세션·라운드 리뷰 */}
+          <ReviewLinksSection reviews={reviews} />
 
           {/* 결과 섹션 */}
           {isCompleted ? (

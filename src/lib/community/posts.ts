@@ -96,6 +96,31 @@ export async function getPost(postId: string): Promise<Post | null> {
   return snap.exists() ? toPost(snap) : null;
 }
 
+/** 공식 리뷰 글 슬러그 규약: r{round}-{key}-review (key: 세션 키 또는 round=라운드 종합) */
+export const REVIEW_KEYS = ["fp1", "fp2", "fp3", "sq", "sprint", "qualifying", "race", "round"] as const;
+export type ReviewKey = (typeof REVIEW_KEYS)[number];
+
+export function reviewSlug(round: number, key: ReviewKey): string {
+  return `r${round}-${key}-review`;
+}
+
+/** 라운드의 공식 리뷰 글 조회 — 존재하는 리뷰만 키별로 반환 */
+export async function getRoundReviews(
+  round: number
+): Promise<Partial<Record<ReviewKey, Post>>> {
+  const slugs = REVIEW_KEYS.map((k) => reviewSlug(round, k));
+  const snap = await getDocs(
+    query(collection(db, "posts"), where("seo.slug", "in", slugs))
+  );
+  const out: Partial<Record<ReviewKey, Post>> = {};
+  for (const d of snap.docs) {
+    const post = toPost(d);
+    const key = REVIEW_KEYS.find((k) => post.seo?.slug === reviewSlug(round, k));
+    if (key) out[key] = post;
+  }
+  return out;
+}
+
 /** slug로 게시글 조회 (seo.slug 필드 쿼리) */
 export async function getPostBySlug(slug: string): Promise<Post | null> {
   const q = query(
