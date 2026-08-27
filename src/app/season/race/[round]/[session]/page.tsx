@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { calendar as mockCalendar } from "@/data/f1-data";
+import { calendar as mockCalendar, sessionSchedules } from "@/data/f1-data";
 import { fetchCalendar } from "@/lib/data/live";
+import { SessionTabs } from "@/components/season/SessionTabs";
+import { getRoundReviews, type ReviewKey, type Post } from "@/lib/community/posts";
 
-export const dynamic = "force-dynamic";
+// force-dynamic 이 아니라 ISR. 이 라우트는 generateStaticParams 로 프리렌더된다.
+// 세션 데이터의 신선도는 아래 ttl(완료 세션 24h / 진행 중 60s)이 담당하므로
+// 페이지 단위로 동적 렌더링할 이유가 없다.
+export const revalidate = 300;
 
 // ─── Session config ────────────────────────────────────────────
 
@@ -85,10 +90,16 @@ const COMPOUND_COLOR: Record<string, string> = {
 // ─── generateStaticParams ─────────────────────────────────────
 
 export async function generateStaticParams() {
-  const sessions = Object.keys(SESSION_CONFIG);
-  return mockCalendar.flatMap((r) =>
-    sessions.map((session) => ({ round: String(r.round), session })),
-  );
+  const sessionKeys = Object.keys(SESSION_CONFIG);
+  // 실제로 일정이 있는 조합만 생성한다. 스프린트 주말엔 fp2·fp3 가 없고
+  // 일반 주말엔 sq·sprint 가 없어서, 전부 곱하면 3분의 1이 notFound 로 버려진다.
+  return mockCalendar.flatMap((r) => {
+    const schedule = sessionSchedules[r.round];
+    if (!schedule) return [];
+    return sessionKeys
+      .filter((key) => !!schedule[key as keyof typeof schedule])
+      .map((session) => ({ round: String(r.round), session }));
+  });
 }
 
 export async function generateMetadata({
@@ -136,6 +147,12 @@ export default async function SessionPage({
   // 세션 일정 없음 (스프린트 주말인데 fp2 등)
   if (!sessionDateIso) notFound();
 
+  // 이 세션의 공식 리뷰 글 (Firestore 미설정/장애 시 조용히 없음 처리)
+  const reviews = await getRoundReviews(roundNum).catch(
+    () => ({} as Partial<Record<ReviewKey, Post>>)
+  );
+  const sessionReview = reviews[session as ReviewKey];
+
   const sessionStart = new Date(sessionDateIso).getTime();
   const now = Date.now();
   const isUpcoming = now < sessionStart;
@@ -154,16 +171,24 @@ export default async function SessionPage({
   const isQualType = session === "qualifying" || session === "sq";
   const isFpType   = session === "fp1" || session === "fp2" || session === "fp3";
 
+  // 결과를 먼저 확인한다. 세션이 끝난 직후엔 OpenF1 에 아직 데이터가 없을 수 있는데,
+  // 그때 긴 ttl 로 받으면 빈 응답이 24시간 캐시에 박혀 페이지가 계속 비어 보인다.
+  // 결과가 비어 있으면 나머지도 짧은 ttl 로 받아 곧 다시 시도하게 둔다.
+  const initialResults = sk
+    ? await of1get<OF1Result>("/session_result", { session_key: sk }, ttl)
+    : [];
+  const dataTtl = initialResults.length > 0 ? ttl : 60;
+
   const [results, drivers, laps, stints, pits, raceControl, weatherArr, grid] = sk
     ? await Promise.all([
-        of1get<OF1Result>  ("/session_result", { session_key: sk }, ttl),
-        of1get<OF1Driver>  ("/drivers",        { session_key: sk }, ttl),
-        of1get<OF1Lap>     ("/laps",           { session_key: sk }, ttl),
-        of1get<OF1Stint>   ("/stints",         { session_key: sk }, ttl),
-        of1get<OF1Pit>     ("/pit",            { session_key: sk }, ttl),
-        of1get<OF1RC>      ("/race_control",   { session_key: sk }, ttl),
-        of1get<OF1Weather> ("/weather",        { session_key: sk }, ttl),
-        of1get<OF1Grid>    ("/starting_grid",  { session_key: sk }, ttl),
+        Promise.resolve(initialResults),
+        of1get<OF1Driver>  ("/drivers",        { session_key: sk }, dataTtl),
+        of1get<OF1Lap>     ("/laps",           { session_key: sk }, dataTtl),
+        of1get<OF1Stint>   ("/stints",         { session_key: sk }, dataTtl),
+        of1get<OF1Pit>     ("/pit",            { session_key: sk }, dataTtl),
+        of1get<OF1RC>      ("/race_control",   { session_key: sk }, dataTtl),
+        of1get<OF1Weather> ("/weather",        { session_key: sk }, dataTtl),
+        of1get<OF1Grid>    ("/starting_grid",  { session_key: sk }, dataTtl),
       ])
     : [[], [], [], [], [], [], [], []];
 
@@ -244,6 +269,21 @@ export default async function SessionPage({
       >
         ← {race.koreanName}
       </Link>
+
+      {/* ── 세션 탭 (라운드 페이지와 동일한 네비게이션) ── */}
+      {sessions && (
+        <SessionTabs sessions={sessions} activeSession={session} round={roundNum} />
+      )}
+
+      {/* ── 이 세션의 리뷰 글 ── */}
+      {sessionReview && (
+        <Link
+          href={`/community/${sessionReview.seo?.slug ?? sessionReview.id}`}
+          className="inline-flex items-center gap-2 px-5 py-2.5 mb-8 bg-[#E8002D]/10 border border-[#E8002D]/40 text-[#E8002D] text-sm font-bold rounded-lg hover:bg-[#E8002D]/20 transition-colors"
+        >
+          📝 {cfg.name} 리뷰 보기 →
+        </Link>
+      )}
 
       {/* ── Header ── */}
       <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#141420] to-[#1a1a2e] border border-[#2D2D3A] mb-10">
