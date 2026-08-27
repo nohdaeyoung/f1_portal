@@ -6,9 +6,18 @@
  */
 
 import { NextResponse } from "next/server";
+import { batchedParallel, fetchWithRetry } from "@/lib/api/http";
 
 const BASE = "https://api.jolpi.ca/ergast/f1";
 const PAGE_SIZE = 100;
+
+/** Jolpica 는 429 를 잘 뱉는다. 재시도하면 대개 성공하므로 공용 계층을 쓴다. */
+const jolpica = (url: string) =>
+  fetchWithRetry(url, {
+    retryOn: [429],
+    revalidate: 86400, // 지난 시즌 결과는 바뀌지 않는다
+    label: "Jolpica API",
+  });
 
 const COLORS = [
   "#E8002D", "#0090D0", "#FF8000", "#00D2BE", "#DC0000",
@@ -31,26 +40,22 @@ interface JolpicaRace {
 
 /** Fetch all pages of a Jolpica list endpoint, return merged Races array */
 async function fetchAllPages(path: string): Promise<JolpicaRace[]> {
-  const url0 = `${BASE}${path}?limit=${PAGE_SIZE}&offset=0`;
-  const res0 = await fetch(url0, { next: { revalidate: 86400 } });
-  if (!res0.ok) throw new Error(`API error ${res0.status}: ${path}`);
+  const res0 = await jolpica(`${BASE}${path}?limit=${PAGE_SIZE}&offset=0`);
   const data0 = await res0.json();
 
   const total = parseInt(data0.MRData.total);
   const firstRaces: JolpicaRace[] = data0.MRData.RaceTable.Races ?? [];
   if (total <= PAGE_SIZE) return firstRaces;
 
-  // Fetch remaining pages in parallel
+  // 남은 페이지 — 전량 동시 발사는 그 자체로 429 를 부르므로 동시성을 묶는다
   const pageCount = Math.ceil(total / PAGE_SIZE);
-  const restPages = await Promise.all(
-    Array.from({ length: pageCount - 1 }, (_, i) =>
-      fetch(`${BASE}${path}?limit=${PAGE_SIZE}&offset=${(i + 1) * PAGE_SIZE}`, {
-        next: { revalidate: 86400 },
-      })
+  const restPages = await batchedParallel(
+    Array.from({ length: pageCount - 1 }, (_, i) => (i + 1) * PAGE_SIZE),
+    (offset) =>
+      jolpica(`${BASE}${path}?limit=${PAGE_SIZE}&offset=${offset}`)
         .then((r) => r.json())
         .then((d) => (d.MRData.RaceTable.Races ?? []) as JolpicaRace[])
         .catch(() => [] as JolpicaRace[])
-    )
   );
 
   return [...firstRaces, ...restPages.flat()];
@@ -74,9 +79,8 @@ export async function GET(
     const [racePages, sprintPages, standingsRes] = await Promise.all([
       fetchAllPages(`/${year}/results`),
       fetchAllPages(`/${year}/sprint`).catch(() => [] as JolpicaRace[]),
-      fetch(`${BASE}/${year}/driverstandings.json`, {
-        next: { revalidate: 86400 },
-      }),
+      // 순위표는 없어도 계산된 랭킹으로 대체되므로 실패를 치명적으로 보지 않는다
+      jolpica(`${BASE}/${year}/driverstandings.json`).catch(() => null),
     ]);
 
     if (!racePages.length) return NextResponse.json(null);
@@ -158,10 +162,12 @@ export async function GET(
 
     // ── Top 10 by final standings (or computed ranking) ────────
     let top10Ids: string[];
-    if (standingsRes.ok) {
+    if (standingsRes?.ok) {
       const sd = await standingsRes.json();
+      // 200 이라고 모양까지 보장되진 않는다. 여기서 터지면 라운드별 포인트 추이가
+      // 다 계산돼 있는데도 500 이 나간다 — 아래 계산된 랭킹으로 이어가면 된다.
       const list =
-        sd.MRData.StandingsTable.StandingsLists[0]?.DriverStandings ?? [];
+        sd?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings ?? [];
       top10Ids = list
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .slice(0, 10).map((s: any) => s.Driver.driverId)
