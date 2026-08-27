@@ -9,6 +9,34 @@ export const maxDuration = 60;
 
 const FF1_BASE = process.env.FASTF1_API_URL ?? "http://localhost:8000";
 
+/**
+ * 프록시가 통과시킬 경로. 캐치올로 두면 Python 서비스의 모든 GET 이 공개되고,
+ * 나중에 그쪽에 관리용 엔드포인트가 하나 늘 때마다 조용히 같이 열린다.
+ * 이 프록시는 인증이 없고 maxDuration 이 60초라, 임의 경로를 허용하면
+ * 외부인이 우리 대역폭으로 Railway 를 60초씩 점유할 수 있다.
+ *
+ * 새 화면이 새 엔드포인트를 쓰면 여기에 한 줄 추가할 것.
+ */
+const ALLOWED_ENDPOINTS = new Set([
+  "/corner-insights",
+  "/driver-telemetry",
+  "/fastest-lap",
+  "/lap-comparison",
+  "/lap-record-trend",
+  "/lap-times-all",
+  "/laps",
+  "/pit-timeline",
+  "/position-history",
+  "/replay-frames",
+  "/results",
+  "/schedule",
+  "/sector-best",
+  "/speed-map",
+  "/stints",
+  "/track-map",
+  "/weather",
+]);
+
 // ─── R2 설정 ──────────────────────────────────────────────────────────────────
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID ?? "";
 const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID ?? "";
@@ -82,6 +110,10 @@ export async function GET(
   const { path } = await params;
   const endpoint = "/" + path.join("/");
   const search = req.nextUrl.searchParams;
+
+  if (!ALLOWED_ENDPOINTS.has(endpoint)) {
+    return NextResponse.json({ error: `Unknown endpoint: ${endpoint}` }, { status: 404 });
+  }
 
   // ── 1. R2 직접 조회: replay-frames ─────────────────────────────────────────
   if (endpoint === "/replay-frames") {
