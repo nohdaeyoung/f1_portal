@@ -26,7 +26,15 @@ const SESSION_CONFIG: Record<string, { name: string; of1Names: string[] }> = {
 
 interface OF1Session  { session_key: number; meeting_key: number; session_name: string; date_start: string; date_end: string; }
 interface OF1Driver   { driver_number: number; full_name: string; name_acronym: string; team_colour: string | null; team_name: string; headshot_url: string | null; country_code: string | null; first_name: string; last_name: string; }
-interface OF1Result   { driver_number: number; position: number; gap_to_leader: number | null; duration: number | null; number_of_laps: number; dnf: boolean; dns: boolean; dsq: boolean; }
+/**
+ * OpenF1 의 gap_to_leader / duration 은 숫자만 오지 않는다.
+ *  - 퀄리 계열 세션: 세그먼트별 배열 [Q1, Q2, Q3]
+ *  - 랩다운 차량   : "+1 LAP" 같은 문자열
+ * 숫자로 단정하면 랩다운이 있는 레이스에서 toFixed 가 터진다.
+ */
+type OF1Numeric = number | number[] | string | null;
+
+interface OF1Result   { driver_number: number; position: number; gap_to_leader: OF1Numeric; duration: OF1Numeric; number_of_laps: number; dnf: boolean; dns: boolean; dsq: boolean; }
 interface OF1Lap      { driver_number: number; lap_number: number; lap_duration: number | null; duration_sector_1: number | null; duration_sector_2: number | null; duration_sector_3: number | null; is_pit_out_lap: boolean; i1_speed: number | null; i2_speed: number | null; st_speed: number | null; }
 interface OF1Stint    { driver_number: number; compound: string; stint_number: number; tyre_age_at_start: number; lap_start: number; lap_end: number | null; }
 interface OF1Pit      { driver_number: number; lap_number: number; pit_duration: number | null; }
@@ -70,10 +78,22 @@ function fmtLap(sec: number | null) {
   return `${m}:${s}`;
 }
 
-function fmtGap(sec: number | null) {
-  if (sec == null) return "—";
-  if (sec === 0) return "리더";
-  return `+${sec.toFixed(3)}`;
+/** 배열이면 첫 세그먼트를, 숫자가 아니면 null 을 돌려준다. */
+function toNumber(v: OF1Numeric): number | null {
+  const raw = Array.isArray(v) ? v[0] : v;
+  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
+}
+
+/**
+ * 갭 표시. 숫자면 +초, "+1 LAP" 같은 문자열은 그대로 보여준다.
+ * 랩다운 차량의 문자열 갭을 숫자로 다루다 toFixed 로 터지던 자리다.
+ */
+function fmtGap(v: OF1Numeric) {
+  const n = toNumber(v);
+  if (n === 0) return "리더";
+  if (n != null) return `+${n.toFixed(3)}`;
+  const raw = Array.isArray(v) ? v[0] : v;
+  return typeof raw === "string" && raw.trim() ? raw : "—";
 }
 
 function fmtTime(iso: string) {
@@ -473,9 +493,9 @@ export default async function SessionPage({
                             </td>
                             {/* 갭 */}
                             <td className="px-3 py-2.5 text-right font-mono text-xs text-[#64748B] hidden md:table-cell">
-                              {gap === 0 ? <span className="text-[#E8002D] font-bold">리더</span>
-                                : gap != null ? `+${gap.toFixed(3)}`
-                                : "—"}
+                              {toNumber(gap) === 0
+                                ? <span className="text-[#E8002D] font-bold">리더</span>
+                                : fmtGap(gap)}
                             </td>
                             {/* S1 */}
                             <td className="px-3 py-2.5 text-right font-mono text-xs text-[#64748B] hidden lg:table-cell">
