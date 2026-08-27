@@ -31,8 +31,9 @@ import {
 import { getLatestDrivers } from "@/lib/api/openf1";
 
 import {
-  driverStandings as mockDriverStandings,
-  constructorStandings as mockConstructorStandings,
+  // driverStandings / constructorStandings 는 의도적으로 import 하지 않는다.
+  // R1 직후 스냅샷이라 폴백으로 쓰면 몇 달 지난 순위를 현재처럼 보여주게 된다.
+  // 캘린더는 손으로 관리하는 실제 일정이라 폴백으로 정당하다.
   calendar as mockCalendar,
   sessionSchedules,
   getDriver,
@@ -177,10 +178,19 @@ const JOLPICA_TO_LOCAL_TEAM: Record<string, string> = {
 
 // ─── 드라이버 챔피언십 순위 ───────────────────────────────────
 
-async function _fetchDriverStandings(): Promise<Standing[]> {
+/**
+ * 순위표는 실패 시 정적 데이터로 폴백하지 않는다.
+ *
+ * f1-data.ts 의 driverStandings 는 R1 직후 스냅샷(러셀 25점)이라 시즌이 진행되면
+ * 실제 순위와 크게 어긋난다. 그걸 조용히 내보내면 사용자는 몇 달 지난 순위표를
+ * 현재 순위로 읽게 된다. 순위표 서비스에서 틀린 숫자는 빈 화면보다 나쁘다.
+ *
+ *   null → 조회 실패 (호출부가 "불러오지 못했습니다" 를 표시해야 함)
+ *   []   → 조회 성공, 아직 데이터 없음 (시즌 개막 전 등)
+ */
+async function _fetchDriverStandings(): Promise<Standing[] | null> {
   try {
     const data = await jolpikaDriverStandings();
-    if (!data.length) return mockDriverStandings;
 
     return data.map((s: JolpicaStanding) => ({
       position: parseInt(s.position),
@@ -191,8 +201,8 @@ async function _fetchDriverStandings(): Promise<Standing[]> {
       wins: parseInt(s.wins),
     }));
   } catch (e) {
-    console.warn("[live] driver standings API failed → mock 사용", e);
-    return mockDriverStandings;
+    console.warn("[live] driver standings 조회 실패 → null 반환", e);
+    return null;
   }
 }
 
@@ -204,10 +214,10 @@ export const fetchDriverStandings = unstable_cache(
 
 // ─── 컨스트럭터 챔피언십 순위 ────────────────────────────────
 
-async function _fetchConstructorStandings(): Promise<ConstructorStanding[]> {
+/** 드라이버 순위와 동일한 계약: null = 실패, [] = 데이터 없음. */
+async function _fetchConstructorStandings(): Promise<ConstructorStanding[] | null> {
   try {
     const data = await jolpikaConstructorStandings();
-    if (!data.length) return mockConstructorStandings;
 
     return data.map((s: JolpicaConstructorStanding) => ({
       position: parseInt(s.position),
@@ -218,8 +228,8 @@ async function _fetchConstructorStandings(): Promise<ConstructorStanding[]> {
       wins: parseInt(s.wins),
     }));
   } catch (e) {
-    console.warn("[live] constructor standings API failed → mock 사용", e);
-    return mockConstructorStandings;
+    console.warn("[live] constructor standings 조회 실패 → null 반환", e);
+    return null;
   }
 }
 

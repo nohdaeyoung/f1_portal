@@ -132,7 +132,12 @@ export default async function HomePage() {
 
         {podiumData && <PodiumSection data={podiumData} />}
 
-        <ChampionshipsSection drivers={driverStandings} constructors={constructorStandings} />
+        {/* 순위 조회에 실패하면(null) 홈에서는 섹션을 숨긴다. 홈은 여러 섹션이
+            늘어선 화면이라 큰 에러 박스보다 조용히 빠지는 편이 낫고, 자세한
+            상태는 /season 에서 안내한다. 지난 순위표를 대신 보여주지는 않는다. */}
+        {driverStandings && constructorStandings && (
+          <ChampionshipsSection drivers={driverStandings} constructors={constructorStandings} />
+        )}
 
         {!weekendInfo.isWeekend && (
           completed.length > 0

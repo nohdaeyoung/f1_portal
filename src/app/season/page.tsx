@@ -302,6 +302,17 @@ export default async function SeasonPage() {
       {nextRace && !nextRace.sessions && <NextRaceSchedule race={nextRace} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16 items-start">
+        {/* 순위 조회 실패(null)는 숨기지 않고 알린다. 지난 순위표를 현재처럼
+            보여주는 것보다 못 불러왔다고 말하는 편이 정확하다. */}
+        {driverStandings === null || constructorStandings === null ? (
+          <div className="bg-[#141420] border border-[#2D2D3A] rounded-2xl px-6 py-12 text-center">
+            <p className="text-4xl mb-3">📉</p>
+            <p className="text-white font-bold mb-1">순위표를 불러오지 못했습니다</p>
+            <p className="text-[#64748B] text-sm">
+              데이터 제공처 응답이 없습니다. 잠시 후 새로고침해 주세요.
+            </p>
+          </div>
+        ) : (
         <StandingsTabs
           driverRows={driverStandings.flatMap((s) => {
             const driver = getDriver(s.driverId);
@@ -334,6 +345,7 @@ export default async function SeasonPage() {
           championshipProgress={championshipProgress}
           completedRounds={completedRounds}
         />
+        )}
         {roundOptions.length > 0 && (
           <RoundStandingsViewer rounds={roundOptions} season={2026} />
         )}
