@@ -1,8 +1,12 @@
 // OpenF1 API Client
 // https://openf1.org - Real-time F1 data
 
+import { fetchWithRetry } from "./http";
+
 const BASE = "https://api.openf1.org/v1";
 
+// OpenF1 은 429 로 레이트리밋을 걸지만, 라이브 세션 데이터에는 403(페이월)로
+// 답하기도 한다. 403 을 재시도하면 계속 403 이라 시간만 버린다 — 429 만 재시도한다.
 async function fetchOpenF1<T>(
   endpoint: string,
   params: Record<string, string | number> = {},
@@ -13,8 +17,11 @@ async function fetchOpenF1<T>(
     searchParams.set(key, String(value));
   }
   const url = `${BASE}${endpoint}?${searchParams.toString()}`;
-  const res = await fetch(url, { next: { revalidate } });
-  if (!res.ok) throw new Error(`OpenF1 API error: ${res.status} ${endpoint}`);
+  const res = await fetchWithRetry(url, {
+    retryOn: [429],
+    revalidate,
+    label: "OpenF1 API",
+  });
   return res.json();
 }
 

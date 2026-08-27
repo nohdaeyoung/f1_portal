@@ -3,7 +3,11 @@
  *
  * Jolpica(Ergast 호환) + OpenF1 API를 호출하고,
  * 로컬 메타데이터(한국어명, 팀 컬러, 국기 등)와 병합해 반환.
- * API 실패 시 목업 데이터로 자동 폴백.
+ *
+ * 실패 처리는 데이터 종류마다 다르다:
+ *  - 순위표: null 반환. 지난 스냅샷을 현재처럼 보여주지 않는다.
+ *  - 캘린더: 정적 일정으로 폴백. 손으로 관리하는 실제 데이터라 정당하다.
+ *  - 그 외 : 빈 배열 또는 null.
  */
 
 import { unstable_cache } from "next/cache";
@@ -29,6 +33,7 @@ import {
 } from "@/lib/api/jolpica";
 
 import { getLatestDrivers } from "@/lib/api/openf1";
+import { batchedParallel } from "@/lib/api/http";
 
 import {
   // driverStandings / constructorStandings 는 의도적으로 import 하지 않는다.
@@ -763,9 +768,13 @@ export async function fetchChampionshipProgress(
   if (completedRounds.length === 0) return [];
 
   try {
-    // fetch round-by-round standings (batched, 3 at a time)
-    const allRoundStandings = await Promise.all(
-      completedRounds.map((r) => getDriverStandingsAtRound(season, r))
+    // 라운드 수만큼 호출한다. Promise.all 로 전량 동시 발사하면 시즌 말엔
+    // 23개가 한꺼번에 나가 Jolpica 가 429 로 막는다. 3개씩 나눠 보낸다.
+    // (주석은 원래 "batched, 3 at a time" 이었는데 코드는 배칭하지 않았다.)
+    const allRoundStandings = await batchedParallel(
+      completedRounds,
+      (r) => getDriverStandingsAtRound(season, r),
+      3
     );
 
     // build map: driverId → points per round

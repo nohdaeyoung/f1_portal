@@ -1,45 +1,22 @@
 // Jolpica F1 API Client (Ergast replacement)
 // https://api.jolpi.ca/ergast/
 
+import { fetchWithRetry, batchedParallel } from "./http";
+
 const BASE = "https://api.jolpi.ca/ergast/f1";
 
-const MAX_429_RETRIES = 4;
-
+// Jolpica 는 버스트에 429 를 준다. 프로덕션 빌드는 수백 페이지를 병렬 워커로
+// 렌더하고 워커끼리 fetch 캐시를 공유하지 않으므로 429 가 쉽게 난다.
+// 429 만 재시도 대상이다 — 4xx/5xx 는 기다려도 달라지지 않는다.
 async function fetchJolpica<T>(path: string, revalidate = 300): Promise<JolpicaResponse<T>> {
   const [basePath, query] = path.split("?");
   const url = `${BASE}${basePath}.json${query ? `?${query}` : ""}`;
-
-  // Jolpica rate-limits bursts. A production build renders 350+ pages across parallel
-  // workers that don't share the fetch cache, so a single 429 used to collapse the page
-  // to mock data. Retry with jittered backoff — every caller routes through here.
-  for (let attempt = 0; ; attempt++) {
-    const res = await fetch(url, { next: { revalidate } });
-    if (res.ok) return res.json();
-    if (res.status !== 429 || attempt >= MAX_429_RETRIES) {
-      throw new Error(`Jolpica API error: ${res.status} ${path}`);
-    }
-    const retryAfter = Number(res.headers.get("retry-after"));
-    const backoff = Number.isFinite(retryAfter) && retryAfter > 0
-      ? retryAfter * 1000
-      : 500 * 2 ** attempt;
-    // jitter so parallel build workers don't retry in lockstep
-    await new Promise((r) => setTimeout(r, backoff + Math.random() * 400));
-  }
-}
-
-/** Run async tasks with limited concurrency to avoid rate-limiting */
-async function batchedParallel<T>(
-  items: string[],
-  fn: (item: string) => Promise<T>,
-  concurrency = 3
-): Promise<T[]> {
-  const results: T[] = [];
-  for (let i = 0; i < items.length; i += concurrency) {
-    const batch = items.slice(i, i + concurrency);
-    const batchResults = await Promise.all(batch.map(fn));
-    results.push(...batchResults);
-  }
-  return results;
+  const res = await fetchWithRetry(url, {
+    retryOn: [429],
+    revalidate,
+    label: "Jolpica API",
+  });
+  return res.json();
 }
 
 // ─── Types ────────────────────────────────────────────────────

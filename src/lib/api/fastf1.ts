@@ -3,8 +3,13 @@
  * Proxies requests through /api/fastf1/* to the local Python service.
  */
 
+import { fetchWithRetry } from "./http";
+
 const BASE = process.env.FASTF1_API_URL ?? "http://localhost:8000";
 
+// FastF1(Railway)은 계산이 오래 걸리면 202 를 준다. 202 는 실패가 아니라
+// "아직 준비 중"이라는 뜻이고 res.ok 이므로 여기서 그대로 통과한다.
+// 502·503 은 콜드 스타트일 수 있어 재시도가 값어치 있다.
 async function ff1Fetch<T>(
   endpoint: string,
   params: Record<string, string | number> = {}
@@ -13,8 +18,12 @@ async function ff1Fetch<T>(
     Object.entries(params).map(([k, v]) => [k, String(v)])
   );
   const url = `${BASE}${endpoint}?${q}`;
-  const res = await fetch(url, { next: { revalidate: 3600 } }); // cache 1hr — F1 data doesn't change
-  if (!res.ok) throw new Error(`FastF1 API error: ${res.status} ${endpoint}`);
+  const res = await fetchWithRetry(url, {
+    retryOn: [502, 503, 504],
+    maxRetries: 2,
+    revalidate: 3600, // F1 과거 데이터는 바뀌지 않는다
+    label: "FastF1 API",
+  });
   return res.json();
 }
 
