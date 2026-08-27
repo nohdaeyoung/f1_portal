@@ -62,7 +62,10 @@ export async function GET(
 ) {
   const { year } = await params;
   const yearNum = parseInt(year);
-  if (isNaN(yearNum) || yearNum < 1950 || yearNum > 2025) {
+  // 상한을 하드코딩하지 말 것. 2025 로 박혀 있던 탓에 2026 시즌이 시작되자
+  // 진행 중인 시즌 조회가 전부 400 으로 막혔다.
+  const maxYear = new Date().getFullYear();
+  if (isNaN(yearNum) || yearNum < 1950 || yearNum > maxYear) {
     return NextResponse.json({ error: "Invalid year" }, { status: 400 });
   }
 

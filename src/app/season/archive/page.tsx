@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SeasonProgressChart } from "@/components/season/SeasonProgressChart";
 
-const YEARS = Array.from({ length: 2025 - 1950 + 1 }, (_, i) => 2025 - i);
+// 상한을 하드코딩하면 해가 바뀔 때마다 현재 시즌이 목록에서 빠진다.
+const LATEST_SEASON = new Date().getFullYear();
+const YEARS = Array.from({ length: LATEST_SEASON - 1950 + 1 }, (_, i) => LATEST_SEASON - i);
 
 interface StandingRow {
   position: number;
