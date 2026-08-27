@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { fmtLap, fmtGap } from "@/lib/format";
 
 const BASE = "https://api.openf1.org/v1";
 
@@ -47,18 +48,6 @@ const FLAG_COLOR: Record<string, string> = {
   VIRTUAL_SAFETY_CAR: "#A78BFA",
   CHEQUERED: "#FFFFFF",
 };
-
-function fmtLap(sec: number | null) {
-  if (!sec) return "—";
-  const m = Math.floor(sec / 60);
-  const s = (sec % 60).toFixed(3).padStart(6, "0");
-  return `${m}:${s}`;
-}
-
-function fmtGap(sec: number | null) {
-  if (sec == null) return "—";
-  return sec === 0 ? "리더" : `+${sec.toFixed(3)}`;
-}
 
 // ─── Types ─────────────────────────────────────────────────────
 

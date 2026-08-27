@@ -4,6 +4,7 @@ import { calendar as mockCalendar, sessionSchedules } from "@/data/f1-data";
 import { fetchCalendar } from "@/lib/data/live";
 import { SessionTabs } from "@/components/season/SessionTabs";
 import { getRoundReviews, type ReviewKey, type Post } from "@/lib/community/posts";
+import { toNumber, fmtLap, fmtGap, type TimingValue } from "@/lib/format";
 
 // force-dynamic 이 아니라 ISR. 이 라우트는 generateStaticParams 로 프리렌더된다.
 // 세션 데이터의 신선도는 아래 ttl(완료 세션 24h / 진행 중 60s)이 담당하므로
@@ -32,9 +33,7 @@ interface OF1Driver   { driver_number: number; full_name: string; name_acronym: 
  *  - 랩다운 차량   : "+1 LAP" 같은 문자열
  * 숫자로 단정하면 랩다운이 있는 레이스에서 toFixed 가 터진다.
  */
-type OF1Numeric = number | number[] | string | null;
-
-interface OF1Result   { driver_number: number; position: number; gap_to_leader: OF1Numeric; duration: OF1Numeric; number_of_laps: number; dnf: boolean; dns: boolean; dsq: boolean; }
+interface OF1Result   { driver_number: number; position: number; gap_to_leader: TimingValue; duration: TimingValue; number_of_laps: number; dnf: boolean; dns: boolean; dsq: boolean; }
 interface OF1Lap      { driver_number: number; lap_number: number; lap_duration: number | null; duration_sector_1: number | null; duration_sector_2: number | null; duration_sector_3: number | null; is_pit_out_lap: boolean; i1_speed: number | null; i2_speed: number | null; st_speed: number | null; }
 interface OF1Stint    { driver_number: number; compound: string; stint_number: number; tyre_age_at_start: number; lap_start: number; lap_end: number | null; }
 interface OF1Pit      { driver_number: number; lap_number: number; pit_duration: number | null; }
@@ -46,6 +45,17 @@ interface OF1Grid     { driver_number: number; position: number; lap_duration: n
 
 const OF1 = "https://api.openf1.org/v1";
 
+/**
+ * lib/api/openf1.ts 의 fetchOpenF1 과 의도적으로 다르다.
+ *
+ * 저쪽은 실패하면 던진다. 이 페이지는 세션당 8개 엔드포인트를 병렬로 부르고
+ * 그중 하나가 없어도(예: FP 세션에 starting_grid 없음) 나머지 섹션은 보여줘야 한다.
+ * 게다가 이 라우트는 120개가 프리렌더되므로, 던지면 일시적 실패 하나가
+ * 빌드를 통째로 실패시킨다. 그래서 여기서는 빈 배열로 흡수한다.
+ *
+ * 합치려면 openf1.ts 에 "실패를 흡수하는" 변형을 두는 편이 낫지, 이 페이지를
+ * 던지는 쪽에 맞추면 안 된다.
+ */
 async function of1get<T>(path: string, params: Record<string, string | number> = {}, revalidate = 60): Promise<T[]> {
   const url = new URL(`${OF1}${path}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
@@ -71,30 +81,7 @@ async function findSessionKey(
   return match ? { sessionKey: match.session_key, meetingKey: match.meeting_key } : null;
 }
 
-function fmtLap(sec: number | null) {
-  if (!sec) return "—";
-  const m = Math.floor(sec / 60);
-  const s = (sec % 60).toFixed(3).padStart(6, "0");
-  return `${m}:${s}`;
-}
 
-/** 배열이면 첫 세그먼트를, 숫자가 아니면 null 을 돌려준다. */
-function toNumber(v: OF1Numeric): number | null {
-  const raw = Array.isArray(v) ? v[0] : v;
-  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
-}
-
-/**
- * 갭 표시. 숫자면 +초, "+1 LAP" 같은 문자열은 그대로 보여준다.
- * 랩다운 차량의 문자열 갭을 숫자로 다루다 toFixed 로 터지던 자리다.
- */
-function fmtGap(v: OF1Numeric) {
-  const n = toNumber(v);
-  if (n === 0) return "리더";
-  if (n != null) return `+${n.toFixed(3)}`;
-  const raw = Array.isArray(v) ? v[0] : v;
-  return typeof raw === "string" && raw.trim() ? raw : "—";
-}
 
 function fmtTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ko-KR", {

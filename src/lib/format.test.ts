@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { toNumber, fmtGap, type TimingValue } from "./format";
 
 /**
  * OpenF1 응답 형태 회귀 테스트.
@@ -9,23 +10,9 @@ import { describe, it, expect } from "vitest";
  *
  * 이걸 숫자로 단정했다가 /season/race/3/race 프리렌더가
  * "TypeError: c.toFixed is not a function" 으로 죽었다.
- * 세션 페이지의 구현과 동일한 로직을 여기서 고정한다.
+ * lib/format.ts 의 실제 구현을 검증한다.
  */
 
-type OF1Numeric = number | number[] | string | null;
-
-function toNumber(v: OF1Numeric): number | null {
-  const raw = Array.isArray(v) ? v[0] : v;
-  return typeof raw === "number" && Number.isFinite(raw) ? raw : null;
-}
-
-function fmtGap(v: OF1Numeric) {
-  const n = toNumber(v);
-  if (n === 0) return "리더";
-  if (n != null) return `+${n.toFixed(3)}`;
-  const raw = Array.isArray(v) ? v[0] : v;
-  return typeof raw === "string" && raw.trim() ? raw : "—";
-}
 
 describe("toNumber — OpenF1 숫자 필드 정규화", () => {
   it("숫자는 그대로", () => expect(toNumber(1.234)).toBe(1.234));
