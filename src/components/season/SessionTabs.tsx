@@ -22,7 +22,10 @@ export function SessionTabs({
 }) {
   const tabs = [
     { key: "overview",   ko: "개요" },
-    { key: "fp1",        ko: "FP1",        date: sessions.fp1,        hide: !!sessions.isSprint },
+    // 스프린트 주말에도 FP1 은 있다 (FP1 → SQ → 스프린트 → 퀄리 → 레이스).
+    // 없는 건 FP2·FP3 뿐이다. 세 개를 다 숨기면 /…/fp1 페이지와 그 리뷰 글이
+    // 멀쩡히 살아있는데 탭에서만 사라져 아무도 못 찾는다.
+    { key: "fp1",        ko: "FP1",        date: sessions.fp1 },
     { key: "fp2",        ko: "FP2",        date: sessions.fp2,        hide: !!sessions.isSprint },
     { key: "fp3",        ko: "FP3",        date: sessions.fp3,        hide: !!sessions.isSprint },
     { key: "sq",         ko: "SQ",         date: sessions.sq,         hide: !sessions.isSprint },
