@@ -140,3 +140,34 @@ describe("fetchCalendar — 라운드 정체성", () => {
     expect(cal.find((r) => r.round === 5)!.status).toBe("cancelled");
   });
 });
+
+describe("fetchCalendar — 우승자 보존", () => {
+  it("결과 조회가 죽어도 로컬이 아는 우승자는 지우지 않는다", async () => {
+    // 일정은 오지만 결과 엔드포인트가 429 로 죽는 조합 (빌드 중 흔하다)
+    jolpica.getRaceSchedule.mockResolvedValue([
+      jolpicaRace(1, "albert_park", "Australian Grand Prix", "2026-03-08"),
+    ]);
+    jolpica.getAllResults.mockRejectedValue(new Error("Jolpica API error: 429"));
+
+    const cal = await fetchCalendar();
+    const local = localCalendar.find((r) => r.round === 1)!;
+
+    expect(cal.find((r) => r.round === 1)!.winner).toBe(local.winner);
+  });
+
+  it("API 우승자가 로컬보다 우선한다", async () => {
+    jolpica.getRaceSchedule.mockResolvedValue([
+      jolpicaRace(1, "albert_park", "Australian Grand Prix", "2026-03-08"),
+    ]);
+    jolpica.getAllResults.mockResolvedValue([
+      {
+        round: "1",
+        Results: [{ Driver: { givenName: "Oscar", familyName: "Piastri" } }],
+      },
+    ]);
+
+    const cal = await fetchCalendar();
+
+    expect(cal.find((r) => r.round === 1)!.winner).toBe("Oscar Piastri");
+  });
+});

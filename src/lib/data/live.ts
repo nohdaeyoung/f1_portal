@@ -378,7 +378,10 @@ async function _fetchCalendar(): Promise<RaceCalendar[]> {
     const merged: RaceCalendar[] = mockCalendar.map((local) => {
       const api = apiByCircuit.get(local.circuitId);
       const date = api?.date ?? local.date;
-      const winner = api ? winnerByApiRound.get(parseInt(api.round)) : local.winner;
+      // 결과 조회(getAllResults)가 429 로 죽어도 이미 아는 우승자는 지우지 않는다.
+      // 나머지 로컬 필드와 같은 규칙이다 — API 는 덮어쓰는 게 아니라 채운다.
+      const winner =
+        (api ? winnerByApiRound.get(parseInt(api.round)) : undefined) ?? local.winner;
 
       let status: RaceCalendar["status"];
       if (local.status === "cancelled") {
