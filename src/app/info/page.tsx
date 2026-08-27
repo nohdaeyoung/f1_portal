@@ -1,16 +1,16 @@
-"use client";
-
 import Link from "next/link";
-import { useState } from "react";
 import { changes2026 } from "@/data/regulations-2026";
 import { allSections } from "@/data/regs";
+import { TabSwitcher } from "@/components/ui/TabSwitcher";
+
+// 서버 컴포넌트로 유지할 것. "use client" 를 붙이면 allSections(규정 전문 ~400KB)가
+// 통째로 클라이언트 번들에 실린다. 이 페이지는 섹션당 메타데이터 7개 필드만 쓴다.
+// 탭 전환 상태는 TabSwitcher 가 담당한다.
 
 const TABS = [
   { id: "changes", label: "2026년 변경사항" },
   { id: "regulations", label: "2026 F1 규정 전문" },
 ] as const;
-
-type TabId = (typeof TABS)[number]["id"];
 
 const impactLabel = { high: "핵심 변경", medium: "변경", low: "소폭 변경" };
 const impactBadge = {
@@ -20,8 +20,6 @@ const impactBadge = {
 };
 
 export default function InfoPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("changes");
-
   const highChanges = changes2026.filter((c) => c.impact === "high");
   const otherChanges = changes2026.filter((c) => c.impact !== "high");
 
@@ -43,25 +41,11 @@ export default function InfoPage() {
         <div className="mt-5 w-16 h-1 bg-[#E8002D] rounded-full" />
       </section>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-[#0D0D14] border border-[#2D2D3A] rounded-xl p-1 mb-10">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all ${
-              activeTab === tab.id
-                ? "bg-[#E8002D] text-white shadow"
-                : "text-[#64748B] hover:text-white hover:bg-white/5"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tab: 2026년 변경사항 ── */}
-      {activeTab === "changes" && (
+      {/* 탭 UI 와 전환 상태는 TabSwitcher(클라이언트)가, 데이터 렌더는 여기(서버)가 담당 */}
+      <TabSwitcher
+        tabs={TABS}
+        panels={{
+          changes: (
         <>
           {/* 핵심 변경 */}
           <section className="mb-10">
@@ -169,10 +153,8 @@ export default function InfoPage() {
             </div>
           </section>
         </>
-      )}
-
-      {/* ── Tab: 2026 F1 규정 전문 ── */}
-      {activeTab === "regulations" && (
+          ),
+          regulations: (
         <>
           {/* Disclaimer */}
           <div className="mb-8 bg-[#141420] border border-[#2D2D3A] rounded-xl px-5 py-4 flex gap-3 items-start">
@@ -232,7 +214,9 @@ export default function InfoPage() {
             ))}
           </div>
         </>
-      )}
+          ),
+        }}
+      />
     </div>
   );
 }

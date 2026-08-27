@@ -1,11 +1,13 @@
-"use client";
-
 import Link from "next/link";
-import { useState } from "react";
 import { modernChampions, classicChampions, multiChampions } from "@/data/f1-champions";
 import { teams } from "@/data/f1-data";
 import { f1Eras } from "@/data/f1-eras";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell, TableHeaderRow } from "@/components/ui/Table";
+import { TabSwitcher } from "@/components/ui/TabSwitcher";
+
+// 서버 컴포넌트로 유지할 것. "use client" 를 붙이면 f1-data(92KB) + f1-eras(52KB) +
+// f1-champions(16KB)가 통째로 클라이언트 번들에 실린다.
+// 탭 전환 상태는 TabSwitcher 가 담당한다.
 
 const TABS = [
   { id: "legends", label: "전설의 챔피언과 컨스트럭터" },
@@ -13,10 +15,7 @@ const TABS = [
   { id: "eras", label: "시대별 이야기" },
 ] as const;
 
-type TabId = (typeof TABS)[number]["id"];
-
 export default function HistoryPage() {
-  const [activeTab, setActiveTab] = useState<TabId>("legends");
 
   const teamsWithTitles = teams
     .filter((t) => t.constructorTitles > 0)
@@ -35,25 +34,12 @@ export default function HistoryPage() {
         <div className="mt-5 w-24 h-1 bg-[#E8002D] rounded-full" />
       </section>
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-[#0D0D14] border border-[#2D2D3A] rounded-xl p-1 mb-10 overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 min-w-max px-4 py-2.5 text-sm font-semibold rounded-lg transition-all whitespace-nowrap ${
-              activeTab === tab.id
-                ? "bg-[#E8002D] text-white shadow"
-                : "text-[#64748B] hover:text-white hover:bg-white/5"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tab: 전설의 챔피언과 컨스트럭터 ── */}
-      {activeTab === "legends" && (
+      {/* 탭 UI 와 전환 상태는 TabSwitcher(클라이언트)가, 데이터 렌더는 여기(서버)가 담당 */}
+      <TabSwitcher
+        tabs={TABS}
+        scrollable
+        panels={{
+          legends: (
         <>
           <section className="mb-16">
             <h2 className="text-2xl font-black text-white mb-2">전설의 챔피언</h2>
@@ -118,10 +104,8 @@ export default function HistoryPage() {
             </div>
           </section>
         </>
-      )}
-
-      {/* ── Tab: 역대 챔피언 ── */}
-      {activeTab === "champions" && (
+          ),
+          champions: (
         <>
           <section className="mb-16">
             <h2 className="text-2xl font-black text-white mb-2">역대 챔피언 (2000–2024)</h2>
@@ -207,10 +191,8 @@ export default function HistoryPage() {
             </div>
           </section>
         </>
-      )}
-
-      {/* ── Tab: 시대별 이야기 ── */}
-      {activeTab === "eras" && (
+          ),
+          eras: (
         <section className="mb-16">
           <h2 className="text-2xl font-black text-white mb-2">시대별 이야기</h2>
           <p className="text-sm text-[#64748B] mb-6">F1의 역사를 지배한 시대와 팀들</p>
@@ -242,7 +224,9 @@ export default function HistoryPage() {
             ))}
           </div>
         </section>
-      )}
+          ),
+        }}
+      />
     </div>
   );
 }
