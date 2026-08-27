@@ -321,11 +321,6 @@ async function _fetchCalendar(): Promise<RaceCalendar[]> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // 로컬 캘린더를 circuitId 기반으로 조회 (API round가 재번호 매겨질 수 있으므로)
-    const localByCircuit = new Map(
-      mockCalendar.map((r) => [r.circuitId, r])
-    );
-
     // Jolpica circuitId → 로컬 circuitId 매핑
     const jolpicaToLocal: Record<string, string> = {
       albert_park: "albert-park",
@@ -350,6 +345,8 @@ async function _fetchCalendar(): Promise<RaceCalendar[]> {
       rodriguez: "mexico-city",
       interlagos: "interlagos",
       las_vegas: "las-vegas",
+      vegas: "las-vegas",
+      madring: "madrid",
       losail: "lusail",
       yas_marina: "yas-marina",
     };
@@ -364,19 +361,29 @@ async function _fetchCalendar(): Promise<RaceCalendar[]> {
         ])
     );
 
-    let nextSet = false;
+    // 로컬 캘린더가 뼈대다. API 는 circuitId 로 찾아 살만 붙인다.
+    //
+    // API 의 round 번호를 정체성으로 쓰면 안 된다. Jolpica 는 취소된 라운드를
+    // 빼고 재번호를 매기는데다, 매핑표에 없는 서킷은 API round 를 그대로 들고
+    // 들어와 엉뚱한 로컬 라운드와 충돌한다. 실제로 그렇게 R14·R21 이 두 줄씩
+    // 생기고 R22(라스베이거스)는 아예 사라져 404 가 났다.
+    const apiByCircuit = new Map<string, JolpicaRace>(
+      schedule.map((r: JolpicaRace) => [
+        jolpicaToLocal[r.Circuit.circuitId] ?? r.Circuit.circuitId,
+        r,
+      ])
+    );
 
-    // API 데이터를 로컬 라운드 번호 기준으로 매핑
-    const apiEntries: RaceCalendar[] = schedule.map((r: JolpicaRace) => {
-      const apiRound = parseInt(r.round);
-      const localCircuitId = jolpicaToLocal[r.Circuit.circuitId] ?? r.Circuit.circuitId;
-      const local = localByCircuit.get(localCircuitId);
-      const localRound = local?.round ?? apiRound;
-      const raceDate = new Date(r.date);
-      const winner = winnerByApiRound.get(apiRound);
+    let nextSet = false;
+    const merged: RaceCalendar[] = mockCalendar.map((local) => {
+      const api = apiByCircuit.get(local.circuitId);
+      const date = api?.date ?? local.date;
+      const winner = api ? winnerByApiRound.get(parseInt(api.round)) : local.winner;
 
       let status: RaceCalendar["status"];
-      if (winner || raceDate < today) {
+      if (local.status === "cancelled") {
+        status = "cancelled";
+      } else if (winner || new Date(date) < today) {
         status = "completed";
       } else if (!nextSet) {
         status = "next";
@@ -386,50 +393,48 @@ async function _fetchCalendar(): Promise<RaceCalendar[]> {
       }
 
       // 세션 일정 — API 데이터 우선, 없으면 정적 폴백
-      const sessions: SessionSchedule = { ...(sessionSchedules[localRound] ?? sessionSchedules[1]) };
-      if (r.FirstPractice?.date) {
-        sessions.fp1 = `${r.FirstPractice.date}T${r.FirstPractice.time}`;
+      const sessions: SessionSchedule = { ...(sessionSchedules[local.round] ?? sessionSchedules[1]) };
+      if (api) {
+        if (api.FirstPractice?.date) {
+          sessions.fp1 = `${api.FirstPractice.date}T${api.FirstPractice.time}`;
+        }
+        if (api.SecondPractice?.date) {
+          sessions.fp2 = `${api.SecondPractice.date}T${api.SecondPractice.time}`;
+        }
+        if (api.ThirdPractice?.date) {
+          sessions.fp3 = `${api.ThirdPractice.date}T${api.ThirdPractice.time}`;
+        }
+        if (api.SprintQualifying?.date) {
+          sessions.sq = `${api.SprintQualifying.date}T${api.SprintQualifying.time}`;
+        }
+        if (api.Sprint?.date) {
+          sessions.sprint = `${api.Sprint.date}T${api.Sprint.time}`;
+        }
+        if (api.Qualifying?.date) {
+          sessions.qualifying = `${api.Qualifying.date}T${api.Qualifying.time}`;
+        }
+        sessions.race = `${api.date}T${api.time ?? "00:00:00Z"}`;
+        sessions.isSprint = !!api.Sprint;
       }
-      if (r.SecondPractice?.date) {
-        sessions.fp2 = `${r.SecondPractice.date}T${r.SecondPractice.time}`;
-      }
-      if (r.ThirdPractice?.date) {
-        sessions.fp3 = `${r.ThirdPractice.date}T${r.ThirdPractice.time}`;
-      }
-      if (r.SprintQualifying?.date) {
-        sessions.sq = `${r.SprintQualifying.date}T${r.SprintQualifying.time}`;
-      }
-      if (r.Sprint?.date) {
-        sessions.sprint = `${r.Sprint.date}T${r.Sprint.time}`;
-      }
-      if (r.Qualifying?.date) {
-        sessions.qualifying = `${r.Qualifying.date}T${r.Qualifying.time}`;
-      }
-      sessions.race = `${r.date}T${r.time ?? "00:00:00Z"}`;
-      sessions.isSprint = !!r.Sprint;
 
       return {
-        round: localRound,
-        name: r.raceName,
-        koreanName: local?.koreanName ?? r.raceName,
-        circuitId: localCircuitId,
-        date: r.date,
+        ...local,
+        date,
         status,
         winner,
         sessions,
       };
     });
 
-    // 취소된 라운드를 삽입 (API에서 빠진 것들)
-    const cancelledRaces: RaceCalendar[] = mockCalendar
-      .filter((r) => r.status === "cancelled")
-      .map((r) => ({
-        ...r,
-        sessions: sessionSchedules[r.round],
-      }));
+    // 로컬에 없는 API 항목은 버린다. 라운드 번호를 새로 지어 붙이면 실제 일정에
+    // 없는 줄이 캘린더에 뜬다(예: Jolpica 의 잠정 항목). 조용히 버리지 않도록 남긴다.
+    const unmatched = [...apiByCircuit.keys()].filter(
+      (id) => !mockCalendar.some((r) => r.circuitId === id)
+    );
+    if (unmatched.length) {
+      console.warn(`[live] 로컬 캘린더에 없는 API 서킷 무시: ${unmatched.join(", ")}`);
+    }
 
-    // 모든 항목을 합치고 round 순 정렬
-    const merged = [...apiEntries, ...cancelledRaces].sort((a, b) => a.round - b.round);
     return merged;
   } catch (e) {
     console.warn("[live] calendar API failed → mock 사용", e);
